@@ -2,5 +2,6 @@
   <Folder Name="/Solution Items/">
     <File Path="ProjectPlan.md" />
   </Folder>
+  <Project Path="ReportApp.AnalysisEngine/ReportApp.AnalysisEngine.csproj" />
   <Project Path="ReportApp.Core/ReportApp.Core.csproj" />
 </Solution>
