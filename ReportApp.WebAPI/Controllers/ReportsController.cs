@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ReportApp.AnalysisEngine.Models;
 using ReportApp.AnalysisEngine.Services;
 using ReportApp.WebAPI.Interfaces;
@@ -19,34 +20,49 @@ public class ReportsController : ControllerBase
         _providers = providers;
     }
 
-    // Hämtar data till Vue Dashboard
+    /// <summary>
+    /// Hämtar analyserad data för dashboarden med valfritt datumfilter.
+    /// </summary>
     [HttpGet("data/{surveyId}")]
-    public async Task<ActionResult<ReportDataViewModel>> GetReportData(int surveyId)
+    public async Task<ActionResult<ReportDataViewModel>> GetReportData(
+        int surveyId,
+        [FromQuery] DateTime? start,
+        [FromQuery] DateTime? end)
     {
-        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId);
+        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end);
         return Ok(data);
     }
 
-    // Trigger för export
+    /// <summary>
+    /// Genererar och exporterar en rapportfil baserat på vald provider, format och datumfilter.
+    /// </summary>
     [HttpPost("export/{providerName}/{format}/{surveyId}")]
-    public async Task<IActionResult> Export(string providerName, string format, int surveyId)
+    public async Task<IActionResult> Export(
+        string providerName,
+        string format,
+        int surveyId,
+        [FromQuery] DateTime? start,
+        [FromQuery] DateTime? end)
     {
+        // 1. Hitta rätt provider (QuestPDF, IronSuite, jsreport etc.)
         var provider = _providers.FirstOrDefault(p => p.Name.Equals(providerName, StringComparison.OrdinalIgnoreCase));
-        if (provider == null) return NotFound("Provider hittades inte");
+        if (provider == null) return NotFound($"Provider '{providerName}' hittades inte.");
 
-        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId);
+        // 2. Hämta den filtrerade datan som ska ligga till grund för rapporten
+        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end);
 
         byte[] fileBytes;
         var sw = Stopwatch.StartNew();
 
         try
         {
+            // 3. Generera filen baserat på önskat format
             fileBytes = format.ToLower() switch
             {
                 "pdf" => await provider.GeneratePdfAsync(data),
                 "excel" => await provider.GenerateExcelAsync(data),
                 "ppt" => await provider.GeneratePptAsync(data),
-                _ => throw new ArgumentException("Ogiltigt format")
+                _ => throw new ArgumentException("Ogiltigt format. Välj pdf, excel eller ppt.")
             };
         }
         catch (Exception ex)
@@ -56,8 +72,8 @@ public class ReportsController : ControllerBase
 
         sw.Stop();
 
-        // Vi skickar med prestanda-headern för att Vue ska kunna läsa den
-        Response.Headers.Add("X-Generation-Time-Ms", sw.ElapsedMilliseconds.ToString());
+        // 4. Skicka prestandamätning i headern så att Vue-frontend kan visa den
+        Response.Headers.Append("X-Generation-Time-Ms", sw.ElapsedMilliseconds.ToString());
 
         var contentType = format.ToLower() switch
         {
@@ -67,6 +83,17 @@ public class ReportsController : ControllerBase
             _ => "application/octet-stream"
         };
 
-        return File(fileBytes, contentType, $"Rapport_{providerName}.{format}");
+        var fileName = $"Rapport_{providerName}_{DateTime.Now:yyyyMMdd}.{format.ToLower()}";
+        return File(fileBytes, contentType, fileName);
+    }
+
+    /// <summary>
+    /// Listar alla tillgängliga enkäter.
+    /// </summary>
+    [HttpGet("surveys")]
+    public async Task<IActionResult> GetSurveys()
+    {
+        var surveys = await _analysisService.GetAllSurveysAsync();
+        return Ok(surveys);
     }
 }

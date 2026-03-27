@@ -12,6 +12,9 @@ namespace ReportApp.AnalysisEngine.Models
         public string SurveyTitle { get; set; } = string.Empty;
         public DateTime GeneratedAt { get; set; } = DateTime.Now;
 
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+
         // Sammanfattning per fråga
         public List<QuestionSummary> QuestionSummaries { get; set; } = new();
 
