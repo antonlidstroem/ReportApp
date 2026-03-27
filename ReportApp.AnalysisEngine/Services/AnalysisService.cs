@@ -12,14 +12,18 @@ public class AnalysisService
     {
         _context = context;
     }
-
-    public async Task<ReportDataViewModel> GetSurveyAnalysisAsync(int surveyId)
+    public async Task<ReportDataViewModel> GetSurveyAnalysisAsync(int surveyId, DateTime? start = null, DateTime? end = null)
     {
-        var survey = await _context.Surveys
+        // Hämta enkäten men filtrera svaren direkt i "Include"
+        var query = _context.Surveys
             .Include(s => s.Company)
             .Include(s => s.Questions)
-            .ThenInclude(q => q.Responses)
-            .FirstOrDefaultAsync(s => s.Id == surveyId);
+            .ThenInclude(q => q.Responses.Where(r =>
+                (!start.HasValue || r.SubmittedAt >= start.Value) &&
+                (!end.HasValue || r.SubmittedAt <= end.Value)))
+            .AsQueryable();
+
+        var survey = await query.FirstOrDefaultAsync(s => s.Id == surveyId);
 
         if (survey == null) throw new Exception("Survey not found");
 
@@ -27,16 +31,18 @@ public class AnalysisService
         {
             CompanyName = survey.Company?.Name ?? "Okänt företag",
             SurveyTitle = survey.Title,
-            GeneratedAt = DateTime.Now
+            GeneratedAt = DateTime.Now,
+            // Vi sparar filter-datumen i modellen så att de kan skrivas ut i rapporten sen
+            StartDate = start,
+            EndDate = end
         };
 
         foreach (var q in survey.Questions)
         {
+            // Vi räknar bara på de svar som passerat filtret
             if (!q.Responses.Any()) continue;
 
-            // Beräkna medelvärde
             var avg = q.Responses.Average(r => r.Value);
-
             model.QuestionSummaries.Add(new QuestionSummary
             {
                 QuestionId = q.Id,
@@ -47,9 +53,11 @@ public class AnalysisService
             });
         }
 
-        // Beräkna trender (aggregera alla svar per månad för hela enkäten)
+        // Uppdatera även trend-beräkningen så den följer filtret
         model.Trends = await _context.Responses
-            .Where(r => r.Question.SurveyId == surveyId)
+            .Where(r => r.Question.SurveyId == surveyId &&
+                       (!start.HasValue || r.SubmittedAt >= start.Value) &&
+                       (!end.HasValue || r.SubmittedAt <= end.Value))
             .GroupBy(r => new { r.SubmittedAt.Year, r.SubmittedAt.Month })
             .Select(g => new MonthlyTrend
             {
@@ -62,6 +70,13 @@ public class AnalysisService
             .ToListAsync();
 
         return model;
+    }
+
+    public async Task<object> GetAllSurveysAsync()
+    {
+        return await _context.Surveys
+            .Select(s => new { s.Id, s.Title })
+            .ToListAsync();
     }
 
     private static string GetMonthName(int month) =>
