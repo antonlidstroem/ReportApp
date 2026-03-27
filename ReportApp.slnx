@@ -4,5 +4,9 @@
   </Folder>
   <Project Path="ReportApp.AnalysisEngine/ReportApp.AnalysisEngine.csproj" />
   <Project Path="ReportApp.Core/ReportApp.Core.csproj" />
+  <Project Path="ReportApp.Vue/reportapp.vue.esproj">
+    <Build />
+    <Deploy />
+  </Project>
   <Project Path="ReportApp.WebAPI/ReportApp.WebAPI.csproj" />
 </Solution>

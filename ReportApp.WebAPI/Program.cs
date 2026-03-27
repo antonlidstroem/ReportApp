@@ -1,6 +1,7 @@
 using ReportApp.Core.Data;
 using ReportApp.AnalysisEngine.Services;
 using ReportApp.WebAPI.Interfaces;
+using ReportApp.WebAPI.Providers; // <--- 1. SE TILL ATT DENNA FINNS
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,24 +14,24 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ReportDbContext>();
 builder.Services.AddScoped<AnalysisService>();
 
-// Registrera Providers (Här lägger vi till våra riktiga implementationer sen)
-// builder.Services.AddScoped<IReportProvider, QuestOpenSourceProvider>();
+// --- 2. AKTIVERA PROVIDERS HÄR ---
+builder.Services.AddScoped<IReportProvider, QuestOpenSourceProvider>();
 // builder.Services.AddScoped<IReportProvider, IronSuiteProvider>();
 // builder.Services.AddScoped<IReportProvider, JsReportProvider>();
 
-// 2. CORS för Vue-frontend
+// --- 3. FIXA CORS PORTEN (Ändrad till 61704) ---
 builder.Services.AddCors(options => {
     options.AddPolicy("VuePolicy", policy => {
-        policy.WithOrigins("http://localhost:5173") // Standard för Vite/Vue
+        policy.WithOrigins("http://localhost:61704") // <--- VIKTIGT: Matcha din Vite-port!
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .WithExposedHeaders("X-Generation-Time-Ms"); // Viktigt för prestandamätning!
+              .WithExposedHeaders("X-Generation-Time-Ms");
     });
 });
 
 var app = builder.Build();
 
-// 3. Seed Database
+// 4. Seed Database
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ReportDbContext>();
@@ -43,6 +44,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// --- 5. ORDNINGEN ÄR VIKTIG ---
 app.UseCors("VuePolicy");
 app.UseAuthorization();
 app.MapControllers();
