@@ -1,9 +1,9 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using ReportApp.AnalysisEngine.Models;
 using ReportApp.AnalysisEngine.Services;
 using ReportApp.WebAPI.Interfaces;
+using ReportApp.WebAPI.Models;
 
 namespace ReportApp.WebAPI.Controllers;
 
@@ -20,80 +20,133 @@ public class ReportsController : ControllerBase
         _providers = providers;
     }
 
-    /// <summary>
-    /// Hämtar analyserad data för dashboarden med valfritt datumfilter.
-    /// </summary>
+    [HttpGet("surveys")]
+    public async Task<IActionResult> GetSurveys()
+    {
+        var surveys = await _analysisService.GetAllSurveysAsync();
+        return Ok(surveys);
+    }
+
+    [HttpGet("surveys/{surveyId}/questions")]
+    public async Task<IActionResult> GetQuestions(int surveyId)
+    {
+        var questions = await _analysisService.GetSurveyQuestionsAsync(surveyId);
+        return Ok(questions);
+    }
+
     [HttpGet("data/{surveyId}")]
     public async Task<ActionResult<ReportDataViewModel>> GetReportData(
         int surveyId,
         [FromQuery] DateTime? start,
-        [FromQuery] DateTime? end)
+        [FromQuery] DateTime? end,
+        [FromQuery] string? questionIds)
     {
-        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end);
+        var ids = ParseIds(questionIds);
+        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end, ids);
         return Ok(data);
     }
 
-    /// <summary>
-    /// Genererar och exporterar en rapportfil baserat på vald provider, format och datumfilter.
-    /// </summary>
+    [HttpGet("providers")]
+    public IActionResult GetProviders()
+    {
+        var result = _providers.Select(p => new
+        {
+            name = p.Name,
+            supportsPdf = true,
+            supportsExcel = true,
+            supportsPpt = true,
+            supportsHtmlTemplate = p is ISupportHtmlTemplate
+        });
+        return Ok(result);
+    }
+
     [HttpPost("export/{providerName}/{format}/{surveyId}")]
     public async Task<IActionResult> Export(
         string providerName,
         string format,
         int surveyId,
         [FromQuery] DateTime? start,
-        [FromQuery] DateTime? end)
+        [FromQuery] DateTime? end,
+        [FromQuery] string? questionIds,
+        [FromBody] ExportRequest? body)
     {
-        // 1. Hitta rätt provider (QuestPDF, IronSuite, jsreport etc.)
-        var provider = _providers.FirstOrDefault(p => p.Name.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+        // 1. Hitta provider
+        var provider = _providers.FirstOrDefault(p =>
+            p.Name.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+
         if (provider == null) return NotFound($"Provider '{providerName}' hittades inte.");
 
-        // 2. Hämta den filtrerade datan som ska ligga till grund för rapporten
-        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end);
+        // 2. Hämta data
+        var ids = ParseIds(questionIds);
+        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end, ids);
 
         byte[] fileBytes;
         var sw = Stopwatch.StartNew();
 
         try
         {
-            // 3. Generera filen baserat på önskat format
+            // 3. Generera fil
             fileBytes = format.ToLower() switch
             {
+                "pdf" when !string.IsNullOrEmpty(body?.HtmlTemplate) && provider is ISupportHtmlTemplate tp
+                    => await tp.GeneratePdfFromTemplateAsync(data, body.HtmlTemplate),
                 "pdf" => await provider.GeneratePdfAsync(data),
-                "excel" => await provider.GenerateExcelAsync(data),
-                "ppt" => await provider.GeneratePptAsync(data),
-                _ => throw new ArgumentException("Ogiltigt format. Välj pdf, excel eller ppt.")
+                "excel" or "xlsx" => await provider.GenerateExcelAsync(data),
+                "ppt" or "pptx" => await provider.GeneratePptAsync(data),
+                _ => throw new ArgumentException("Ogiltigt format.")
             };
         }
         catch (Exception ex)
         {
-            return BadRequest($"Fel vid generering: {ex.Message}");
+            return BadRequest($"Fel vid generering ({providerName}): {ex.Message}");
         }
 
         sw.Stop();
 
-        // 4. Skicka prestandamätning i headern så att Vue-frontend kan visa den
-        Response.Headers.Append("X-Generation-Time-Ms", sw.ElapsedMilliseconds.ToString());
+        // 4. Bestäm exakt ContentType och Filändelse (HÄR VAR FELET INNAN)
+        string contentType;
+        string fileExtension;
 
-        var contentType = format.ToLower() switch
+        switch (format.ToLower())
         {
-            "pdf" => "application/pdf",
-            "excel" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "ppt" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            _ => "application/octet-stream"
-        };
+            case "pdf":
+                contentType = "application/pdf";
+                fileExtension = "pdf";
+                break;
+            case "excel":
+            case "xlsx":
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                fileExtension = "xlsx";
+                break;
+            case "ppt":
+            case "pptx":
+                contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                fileExtension = "pptx";
+                break;
+            default:
+                contentType = "application/octet-stream";
+                fileExtension = "bin";
+                break;
+        }
 
-        var fileName = $"Rapport_{providerName}_{DateTime.Now:yyyyMMdd}.{format.ToLower()}";
+        Response.Headers.Append("X-Generation-Time-Ms", sw.ElapsedMilliseconds.ToString());
+        Response.Headers.Append("Access-Control-Expose-Headers", "X-Generation-Time-Ms");
+
+        // 5. Returnera filen med garanterat rätt ändelse
+        var fileName = $"Rapport_{providerName}_{DateTime.Now:yyyyMMdd}.{fileExtension}";
         return File(fileBytes, contentType, fileName);
     }
 
-    /// <summary>
-    /// Listar alla tillgängliga enkäter.
-    /// </summary>
-    [HttpGet("surveys")]
-    public async Task<IActionResult> GetSurveys()
+    private static List<int>? ParseIds(string? raw)
     {
-        var surveys = await _analysisService.GetAllSurveysAsync();
-        return Ok(surveys);
+        if (string.IsNullOrWhiteSpace(raw) || raw == "undefined" || raw == "null")
+            return null;
+
+        var ids = raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                  .Select(s => int.TryParse(s.Trim(), out var id) ? id : -1)
+                  .Where(id => id > 0)
+                  .ToList();
+
+        return ids.Any() ? ids : null; // Om listan är tom, returnera null (hämta alla)
     }
 }
