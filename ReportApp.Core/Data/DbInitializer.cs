@@ -1,4 +1,4 @@
-﻿using ReportApp.Core.Models;
+using ReportApp.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ReportApp.Core.Data;
@@ -7,14 +7,15 @@ public static class DbInitializer
 {
     public static void Initialize(ReportDbContext context)
     {
-        // Rensa och skapa om DB för att få en fräsch start
-        context.Database.EnsureDeleted();
         context.Database.EnsureCreated();
+
+        // Guard: only seed if empty
+        if (context.Surveys.Any()) return;
 
         var company = new Company { Name = "Storkommunen AB", OrganizationNumber = "556677-1234" };
         context.Companies.Add(company);
 
-        // --- ENKÄT 1: Årlig Arbetsmiljökartläggning (Bred) ---
+        // --- ENKÄT 1: Årlig Arbetsmiljökartläggning ---
         var survey1 = new Survey
         {
             Title = "Årlig Arbetsmiljökartläggning 2026",
@@ -22,7 +23,7 @@ public static class DbInitializer
             Company = company
         };
 
-        // --- ENKÄT 2: Pulsmätning: Stress & Belastning (Fokuserad) ---
+        // --- ENKÄT 2: Pulsmätning Stress & Belastning ---
         var survey2 = new Survey
         {
             Title = "Månadskoll: Stress & Belastning",
@@ -30,7 +31,7 @@ public static class DbInitializer
             Company = company
         };
 
-        // --- ENKÄT 3: Skyddsrond: Verkstad Nord (Teknisk/Säkerhet) ---
+        // --- ENKÄT 3: Skyddsrond Verkstad Nord ---
         var survey3 = new Survey
         {
             Title = "Skyddsrond: Verkstad Nord",
@@ -38,56 +39,103 @@ public static class DbInitializer
             Company = company
         };
 
-        context.Surveys.AddRange(survey1, survey2, survey3);
+        // --- ENKÄT 4: STRESSTEST — 500 frågor × 200 svar = 100 000 rader ---
+        var survey4 = new Survey
+        {
+            Title = "⚡ Stresstest: Fullständig Organisationsanalys 2026",
+            CreatedAt = DateTime.Now.AddMonths(-6),
+            Company = company
+        };
 
-        // Definiera frågor för de olika enkäterna
+        context.Surveys.AddRange(survey1, survey2, survey3, survey4);
+
+        var rnd = new Random(42); // seed for reproducibility
+
+        // Standard questions
         var questions = new List<Question>
         {
-            // Frågor till Survey 1
             new() { Text = "Hur upplever du din arbetsbelastning?", Category = "Psykosocialt", Type = QuestionType.Scale, Survey = survey1 },
             new() { Text = "Upplever du stöd från din närmaste chef?", Category = "Ledarskap", Type = QuestionType.Scale, Survey = survey1 },
             new() { Text = "Är den fysiska arbetsmiljön tillfredsställande?", Category = "Fysisk miljö", Type = QuestionType.Scale, Survey = survey1 },
-            
-            // Frågor till Survey 2
+            new() { Text = "Har du tillgång till rätt verktyg för ditt arbete?", Category = "Resurser", Type = QuestionType.Scale, Survey = survey1 },
+            new() { Text = "Känner du dig inkluderad i teamets beslut?", Category = "Psykosocialt", Type = QuestionType.Scale, Survey = survey1 },
+
             new() { Text = "Känner du dig utvilad när du börjar arbetsdagen?", Category = "Hälsa", Type = QuestionType.Scale, Survey = survey2 },
             new() { Text = "Har du haft tillräckligt med tid för återhämtning?", Category = "Hälsa", Type = QuestionType.Scale, Survey = survey2 },
-            
-            // Frågor till Survey 3
+            new() { Text = "Upplever du stress relaterad till deadlines?", Category = "Psykosocialt", Type = QuestionType.Scale, Survey = survey2 },
+
             new() { Text = "Fungerar nödutgångar och brandsläckare utan anmärkning?", Category = "Säkerhet", Type = QuestionType.YesNo, Survey = survey3 },
-            new() { Text = "Används föreskriven skyddsutrustning?", Category = "Säkerhet", Type = QuestionType.YesNo, Survey = survey3 }
+            new() { Text = "Används föreskriven skyddsutrustning?", Category = "Säkerhet", Type = QuestionType.YesNo, Survey = survey3 },
+            new() { Text = "Är alla maskiner försedda med korrekt skydd?", Category = "Säkerhet", Type = QuestionType.YesNo, Survey = survey3 },
         };
 
         context.Questions.AddRange(questions);
 
-        // Generera slumpmässig data (Svar) för alla frågor
-        var rnd = new Random();
         foreach (var q in questions)
         {
-            // Generera 20-40 svar per fråga
             int responseCount = rnd.Next(20, 41);
             for (int i = 0; i < responseCount; i++)
             {
-                double val;
-                if (q.Type == QuestionType.Scale)
-                {
-                    // Skapa lite variation i "måendet"
-                    val = rnd.Next(1, 6);
-                    if (q.Category == "Hälsa") val = rnd.Next(2, 5); // Mer stabilt i mitten
-                }
-                else
-                {
-                    val = rnd.Next(0, 2); // 0 eller 1
-                }
+                double val = q.Type == QuestionType.Scale
+                    ? (q.Category == "Hälsa" ? rnd.Next(2, 5) : rnd.Next(1, 6))
+                    : rnd.Next(0, 2);
 
                 context.Responses.Add(new Response
                 {
                     Question = q,
                     Value = val,
-                    // Sprid ut svaren över tid baserat på när enkäten skapades
                     SubmittedAt = q.Survey!.CreatedAt.AddDays(rnd.Next(0, 30))
                 });
             }
         }
+
+        // --- HEAVY SURVEY: 500 questions × 200 responses ---
+        var categories = new[] {
+            "Ledarskap", "Psykosocialt", "Fysisk miljö", "Hälsa",
+            "Säkerhet", "Kompetens", "Kommunikation", "Värderingar",
+            "Innovation", "Mångfald"
+        };
+
+        var questionTexts = new[]
+        {
+            "Hur värderar du kvaliteten på {0} i din dagliga verksamhet?",
+            "I vilken utsträckning uppfylls dina förväntningar gällande {0}?",
+            "Hur nöjd är du med nuvarande {0}-processer?",
+            "Anser du att {0} fungerar tillfredsställande i organisationen?",
+            "Hur bedömer du organisationens förmåga att hantera {0}?"
+        };
+
+        var heavyQuestions = new List<Question>();
+        for (int i = 1; i <= 500; i++)
+        {
+            var cat = categories[i % categories.Length];
+            var textTemplate = questionTexts[i % questionTexts.Length];
+            heavyQuestions.Add(new Question
+            {
+                Text = string.Format(textTemplate, $"{cat.ToLower()} (fråga {i:000})"),
+                Category = cat,
+                Type = i % 7 == 0 ? QuestionType.YesNo : QuestionType.Scale,
+                Survey = survey4
+            });
+        }
+        context.Questions.AddRange(heavyQuestions);
+
+        var responses = new List<Response>();
+        foreach (var q in heavyQuestions)
+        {
+            for (int i = 0; i < 200; i++)
+            {
+                responses.Add(new Response
+                {
+                    Question = q,
+                    Value = q.Type == QuestionType.Scale
+                        ? rnd.Next(1, 6)
+                        : rnd.Next(0, 2),
+                    SubmittedAt = survey4.CreatedAt.AddDays(rnd.Next(0, 180))
+                });
+            }
+        }
+        context.Responses.AddRange(responses);
 
         context.SaveChanges();
     }

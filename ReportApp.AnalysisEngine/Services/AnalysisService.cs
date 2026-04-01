@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ReportApp.Core.Data;
 using ReportApp.AnalysisEngine.Models;
 
@@ -12,9 +12,13 @@ public class AnalysisService
     {
         _context = context;
     }
-    public async Task<ReportDataViewModel> GetSurveyAnalysisAsync(int surveyId, DateTime? start = null, DateTime? end = null)
+
+    public async Task<ReportDataViewModel> GetSurveyAnalysisAsync(
+        int surveyId,
+        DateTime? start = null,
+        DateTime? end = null,
+        List<int>? questionIds = null)
     {
-        // Hämta enkäten men filtrera svaren direkt i "Include"
         var query = _context.Surveys
             .Include(s => s.Company)
             .Include(s => s.Questions)
@@ -24,7 +28,6 @@ public class AnalysisService
             .AsQueryable();
 
         var survey = await query.FirstOrDefaultAsync(s => s.Id == surveyId);
-
         if (survey == null) throw new Exception("Survey not found");
 
         var model = new ReportDataViewModel
@@ -32,32 +35,39 @@ public class AnalysisService
             CompanyName = survey.Company?.Name ?? "Okänt företag",
             SurveyTitle = survey.Title,
             GeneratedAt = DateTime.Now,
-            // Vi sparar filter-datumen i modellen så att de kan skrivas ut i rapporten sen
             StartDate = start,
             EndDate = end
         };
 
         foreach (var q in survey.Questions)
         {
-            // Vi räknar bara på de svar som passerat filtret
+            // Filter by selected question IDs if provided
+            if (questionIds != null && questionIds.Count > 0 && !questionIds.Contains(q.Id))
+                continue;
+
             if (!q.Responses.Any()) continue;
 
             var avg = q.Responses.Average(r => r.Value);
+            var dist = q.Responses
+                .GroupBy(r => (int)r.Value)
+                .ToDictionary(g => $"Värde {g.Key}", g => g.Count());
+
             model.QuestionSummaries.Add(new QuestionSummary
             {
                 QuestionId = q.Id,
                 Text = q.Text,
                 Category = q.Category,
                 AverageValue = Math.Round(avg, 2),
-                TotalResponses = q.Responses.Count
+                TotalResponses = q.Responses.Count,
+                Distribution = dist
             });
         }
 
-        // Uppdatera även trend-beräkningen så den följer filtret
         model.Trends = await _context.Responses
             .Where(r => r.Question.SurveyId == surveyId &&
                        (!start.HasValue || r.SubmittedAt >= start.Value) &&
-                       (!end.HasValue || r.SubmittedAt <= end.Value))
+                       (!end.HasValue || r.SubmittedAt <= end.Value) &&
+                       (questionIds == null || questionIds.Count == 0 || questionIds.Contains(r.QuestionId)))
             .GroupBy(r => new { r.SubmittedAt.Year, r.SubmittedAt.Month })
             .Select(g => new MonthlyTrend
             {
@@ -75,7 +85,22 @@ public class AnalysisService
     public async Task<object> GetAllSurveysAsync()
     {
         return await _context.Surveys
-            .Select(s => new { s.Id, s.Title })
+            .Select(s => new { s.Id, s.Title, QuestionCount = s.Questions.Count })
+            .ToListAsync();
+    }
+
+    public async Task<object> GetSurveyQuestionsAsync(int surveyId)
+    {
+        return await _context.Questions
+            .Where(q => q.SurveyId == surveyId)
+            .Select(q => new
+            {
+                q.Id,
+                q.Text,
+                q.Category,
+                Type = q.Type.ToString(),
+                ResponseCount = q.Responses.Count
+            })
             .ToListAsync();
     }
 

@@ -1,37 +1,51 @@
 using ReportApp.Core.Data;
 using ReportApp.AnalysisEngine.Services;
 using ReportApp.WebAPI.Interfaces;
-using ReportApp.WebAPI.Providers; // <--- 1. SE TILL ATT DENNA FINNS
+using ReportApp.WebAPI.Providers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Services
+// ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "ReportApp PoC API", Version = "v1" });
+});
 
-// Databas & Logik
+// Database & analysis
 builder.Services.AddDbContext<ReportDbContext>();
 builder.Services.AddScoped<AnalysisService>();
 
-// --- 2. AKTIVERA PROVIDERS HÄR ---
+// ── Report Providers ──────────────────────────────────────────────────────────
+// Activate the providers you have installed.
+// Each can be toggled independently.
+
 builder.Services.AddScoped<IReportProvider, QuestOpenSourceProvider>();
 // builder.Services.AddScoped<IReportProvider, IronSuiteProvider>();
 // builder.Services.AddScoped<IReportProvider, JsReportProvider>();
 
-// --- 3. FIXA CORS PORTEN (Ändrad till 61704) ---
-builder.Services.AddCors(options => {
-    options.AddPolicy("VuePolicy", policy => {
-        policy.WithOrigins("http://localhost:61704") // <--- VIKTIGT: Matcha din Vite-port!
+// ── CORS ──────────────────────────────────────────────────────────────────────
+// Read allowed origins from config so you don't have to touch code for port changes.
+// In appsettings.Development.json add: "AllowedOrigins": ["http://localhost:5173"]
+var allowedOrigins = builder.Configuration
+    .GetSection("AllowedOrigins")
+    .Get<string[]>()
+    ?? ["http://localhost:5173", "http://localhost:61704"];
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("VuePolicy", policy =>
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .WithExposedHeaders("X-Generation-Time-Ms");
-    });
+              .WithExposedHeaders("X-Generation-Time-Ms", "X-File-Size-Bytes"));
 });
 
+// ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-// 4. Seed Database
+// Seed database (guarded — only runs if empty)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ReportDbContext>();
@@ -44,7 +58,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// --- 5. ORDNINGEN ÄR VIKTIG ---
+// Order matters: CORS before routing
 app.UseCors("VuePolicy");
 app.UseAuthorization();
 app.MapControllers();
