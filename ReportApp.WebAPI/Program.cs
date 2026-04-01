@@ -21,10 +21,15 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ReportDbContext>();
 builder.Services.AddScoped<AnalysisService>();
 
-// Istället för JsReportBinary.GetInstance()
+// Skapa temp-mapp för jsreport
+var jsreportTempDir = Path.Combine(Path.GetTempPath(), "reportapp_jsreport");
+if (!Directory.Exists(jsreportTempDir)) Directory.CreateDirectory(jsreportTempDir);
+
 builder.Services.AddJsReport(new LocalReporting()
-    .UseBinary(jsreport.Binary.JsReportBinary.GetBinary()) // Kräver paketet 'jsreport.Binary'
-    .AsUtility()
+    .UseBinary(jsreport.Binary.JsReportBinary.GetBinary())
+    .KillRunningJsReportProcesses()
+    .TempDirectory(jsreportTempDir) // Metoden heter TempDirectory i 3.8.x
+    .AsUtility()                   // Detta krävs för att Create() ska fungera
     .Create());
 
 // ── Report Providers ──────────────────────────────────────────────────────────
