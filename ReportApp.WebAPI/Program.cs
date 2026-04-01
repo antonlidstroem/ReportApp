@@ -1,5 +1,9 @@
-using ReportApp.Core.Data;
+using jsreport.AspNetCore;
+using jsreport.Binary;
+using jsreport.Local;
+using jsreport.Shared;
 using ReportApp.AnalysisEngine.Services;
+using ReportApp.Core.Data;
 using ReportApp.WebAPI.Interfaces;
 using ReportApp.WebAPI.Providers;
 
@@ -17,13 +21,19 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ReportDbContext>();
 builder.Services.AddScoped<AnalysisService>();
 
+// Istället för JsReportBinary.GetInstance()
+builder.Services.AddJsReport(new LocalReporting()
+    .UseBinary(jsreport.Binary.JsReportBinary.GetBinary()) // Kräver paketet 'jsreport.Binary'
+    .AsUtility()
+    .Create());
+
 // ── Report Providers ──────────────────────────────────────────────────────────
 // Activate the providers you have installed.
 // Each can be toggled independently.
 
 builder.Services.AddScoped<IReportProvider, QuestOpenSourceProvider>();
 // builder.Services.AddScoped<IReportProvider, IronSuiteProvider>();
-// builder.Services.AddScoped<IReportProvider, JsReportProvider>();
+builder.Services.AddScoped<IReportProvider, JsReportProvider>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // Read allowed origins from config so you don't have to touch code for port changes.

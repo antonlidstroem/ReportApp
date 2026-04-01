@@ -4,9 +4,8 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using ReportApp.AnalysisEngine.Models;
 using ReportApp.WebAPI.Interfaces;
-using ShapeCrawler;
+using System.IO;
 
-// VIKTIGT: Detta namespace måste matcha mappen och namnet i Program.cs
 namespace ReportApp.WebAPI.Providers;
 
 public class QuestOpenSourceProvider : IReportProvider
@@ -15,52 +14,59 @@ public class QuestOpenSourceProvider : IReportProvider
 
     public async Task<byte[]> GeneratePdfAsync(ReportDataViewModel data)
     {
+        // Viktigt: QuestPDF 2026 kräver licenssättning i koden
         QuestPDF.Settings.License = LicenseType.Community;
 
         var document = Document.Create(container =>
         {
             container.Page(page =>
             {
-                page.Margin(1, Unit.Centimetre);
-                page.Header().Row(row => {
-                    row.RelativeItem().Text(data.SurveyTitle).FontSize(24).Bold().FontColor(Colors.Blue.Medium);
-                    row.RelativeItem().AlignRight().Text(DateTime.Now.ToShortDateString());
-                });
+                page.Margin(50);
+                page.Header().Text(data.SurveyTitle).FontSize(25).SemiBold().FontColor(Colors.Blue.Medium);
 
-                page.Content().PaddingVertical(10).Column(col =>
+                page.Content().PaddingVertical(10).Table(table =>
                 {
-                    col.Item().Text($"Företag: {data.CompanyName}").FontSize(14);
-                    col.Item().PaddingTop(10).Table(table => {
-                        table.ColumnsDefinition(c => {
-                            c.RelativeColumn(3);
-                            c.RelativeColumn(1);
-                        });
-                        table.Header(h => {
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Fråga").Bold();
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Snitt").Bold();
-                        });
-                        foreach (var q in data.QuestionSummaries)
-                        {
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten4).Padding(5).Text(q.Text);
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten4).Padding(5).Text(q.AverageValue.ToString());
-                        }
+                    table.ColumnsDefinition(c =>
+                    {
+                        c.RelativeColumn();
+                        c.ConstantColumn(100);
                     });
+
+                    // Header
+                    table.Cell().Element(Block).Text("Fråga").Bold();
+                    table.Cell().Element(Block).Text("Snittvärde").Bold();
+
+                    // Rader
+                    foreach (var q in data.QuestionSummaries)
+                    {
+                        table.Cell().Element(Block).Text(q.Text);
+                        table.Cell().Element(Block).Text(q.AverageValue.ToString("F1"));
+                    }
                 });
             });
         });
+
         return document.GeneratePdf();
+
+        // Helper för tabell-styling
+        static IContainer Block(IContainer container) => container.BorderBottom(1).BorderColor(Colors.Grey.Lighten2).PaddingVertical(5);
     }
 
     public async Task<byte[]> GenerateExcelAsync(ReportDataViewModel data)
     {
         using var workbook = new XLWorkbook();
-        var ws = workbook.Worksheets.Add("Analys");
-        ws.Cell(1, 1).Value = "Fråga"; ws.Cell(1, 2).Value = "Medelvärde";
+        var ws = workbook.Worksheets.Add("Data");
+
+        ws.Cell(1, 1).Value = "Fråga";
+        ws.Cell(1, 2).Value = "Snitt";
+
         for (int i = 0; i < data.QuestionSummaries.Count; i++)
         {
             ws.Cell(i + 2, 1).Value = data.QuestionSummaries[i].Text;
-            ws.Cell(i + 2, 2).Value = data.QuestionSummaries[i].AverageValue;
+            // Tvinga värdet till ett nummer så Excel inte tror det är text
+            ws.Cell(i + 2, 2).Value = (double)data.QuestionSummaries[i].AverageValue;
         }
+
         using var ms = new MemoryStream();
         workbook.SaveAs(ms);
         return ms.ToArray();
@@ -68,10 +74,7 @@ public class QuestOpenSourceProvider : IReportProvider
 
     public async Task<byte[]> GeneratePptAsync(ReportDataViewModel data)
     {
-        // För PoC: skapar en tom presentation
-        var pres = new Presentation();
-        using var ms = new MemoryStream();
-        pres.Save(ms);
-        return ms.ToArray();
+        // Vi håller detta interface-metoden nöjd men inaktiv tills vidare
+        throw new NotImplementedException("PowerPoint-export är tillfälligt inaktiverad under uppgradering.");
     }
 }

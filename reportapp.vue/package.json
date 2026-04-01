@@ -17,7 +17,9 @@
     "@popperjs/core": "^2.11.8",
     "axios": "^1.13.6",
     "bootstrap": "^5.3.8",
-    "vue": "^3.5.30"
+    "pinia": "^3.0.4",
+    "vue": "^3.5.30",
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.4",
