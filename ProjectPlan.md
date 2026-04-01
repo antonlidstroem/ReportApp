@@ -17,9 +17,15 @@ Systemet byggs med en **Clean Architecture**-ansats för att separera data, aff�
     * **Data Models:** Entities för Arbetsmiljö-domänen (t.ex. `Survey`, `Question`, `Answer`, `Company`).
     * **Persistence:** SQLite med Entity Framework Core.
     * **Seed Data:** En robust mock-databas med realistiska värden för grafer och trender.
+
+    DONE
+
 2.  **`ReportApp.AnalysisEngine` (Class Library):**
     * **Logic:** Beräkningsmotor som aggregerar data (t.ex. genomsnittsbetyg per avdelning, incidentfrekvens).
     * **ViewModels:** DTO:er (Data Transfer Objects) optimerade för rapportgenerering.
+
+    DONE
+
 3.  **`ReportApp.WebAPI` (ASP.NET Core API):**
     * **Endpoints:** Hanterar anrop från Vue-frontend.
     * **Orchestration:** Dirigerar data till rätt export-provider (IronSuite, OpenSource eller jsreport).
