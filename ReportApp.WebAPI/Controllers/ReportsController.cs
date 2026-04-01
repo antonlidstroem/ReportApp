@@ -86,10 +86,15 @@ public class ReportsController : ControllerBase
         try
         {
             // 3. Generera fil
+            // 3. Generera fil
             fileBytes = format.ToLower() switch
             {
-                "pdf" when !string.IsNullOrEmpty(body?.HtmlTemplate) && provider is ISupportHtmlTemplate tp
+                // Vi lägger till en kontroll för "string" och använder IsNullOrWhiteSpace för säkerhet
+                "pdf" when !string.IsNullOrWhiteSpace(body?.HtmlTemplate)
+                           && body.HtmlTemplate != "string"
+                           && provider is ISupportHtmlTemplate tp
                     => await tp.GeneratePdfFromTemplateAsync(data, body.HtmlTemplate),
+
                 "pdf" => await provider.GeneratePdfAsync(data),
                 "excel" or "xlsx" => await provider.GenerateExcelAsync(data),
                 "ppt" or "pptx" => await provider.GeneratePptAsync(data),
