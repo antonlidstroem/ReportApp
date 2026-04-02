@@ -32,6 +32,15 @@ builder.Services.AddJsReport(new LocalReporting()
     .AsUtility()                   // Detta krävs för att Create() ska fungera
     .Create());
 
+
+
+// 1. Register the License (Get this from Syncfusion dashboard)
+var syncfusionKey = builder.Configuration["Syncfusion:LicenseKey"];
+Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
+
+// 2. Register the Provider
+builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();
+
 // ── Report Providers ──────────────────────────────────────────────────────────
 // Activate the providers you have installed.
 // Each can be toggled independently.
