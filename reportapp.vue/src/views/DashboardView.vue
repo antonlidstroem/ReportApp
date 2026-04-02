@@ -184,6 +184,18 @@ const providers = [
     cost: 'Gratis + Enterprise',
     costClass: 'freemium',
     color: '#a855f7'
+  },
+  {
+    route: '/providers/syncfusion',
+    track: 4,
+    icon: '💎',
+    name: 'Syncfusion Essential Studio',
+    shortName: 'Syncfusion',
+    description: 'Mogen enterprise-lösning. Kraftfulla motorer för XlsIO och Presentation. Använder objektmodeller för att bygga dokument.',
+    tags: ['Enterprise', 'Native Office', 'Hög prestanda'],
+    cost: 'Betallicens',
+    costClass: 'paid',
+    color: '#007bff'
   }
 ]
 
