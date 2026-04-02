@@ -65,58 +65,95 @@
       </div>
     </div>
   </div>
+
+
+  <section class="section sandbox">
+    <h2>🛠️ Enterprise Feature Sandbox</h2>
+    <p class="mb-3">Aktivera avancerade Syncfusion-funktioner för att se hur de skiljer sig från de andra spåren.</p>
+
+    <div class="sandbox-grid">
+      <div class="sf-feature-card" :class="{ active: sfConfig.useFormulas }">
+        <div class="sf-feature-header">
+          <input type="checkbox" v-model="sfConfig.useFormulas" id="f-formulas">
+          <label for="f-formulas">Live Excel Formulas</label>
+        </div>
+        <p>Istället för att bara skriva '4.2', skriver vi <code>=AVERAGE(B2:B10)</code>. Ändra data i Excel och grafen följer med!</p>
+      </div>
+
+      <div class="sf-feature-card" :class="{ active: sfConfig.encrypt }">
+        <div class="sf-feature-header">
+          <input type="checkbox" v-model="sfConfig.encrypt" id="f-encrypt">
+          <label for="f-encrypt">PDF Encryption (AES-256)</label>
+        </div>
+        <p>Lösenordsskydda rapporten direkt vid generering. (Lösenord: <code>1234</code>)</p>
+      </div>
+
+      <div class="sf-feature-card" :class="{ active: sfConfig.nativeCharts }">
+        <div class="sf-feature-header">
+          <input type="checkbox" v-model="sfConfig.nativeCharts" id="f-charts">
+          <label for="f-charts">Native Editable Charts</label>
+        </div>
+        <p>Exportera grafer som PowerPoint-objekt istället för bilder. Går att redigera i Office-paketet.</p>
+      </div>
+    </div>
+  </section>
+
+
+
+
 </template>
 
 <script setup lang="ts">
 import SurveyPicker from "../../components/SurveyPicker.vue";
 import ModuleList from "../../components/ModuleList.vue";
 import TemplateDesigner from "../../components/TemplateDesigner.vue";
-import ExportButton from "../../components/ExportButton.vue";
+  import ExportButton from "../../components/ExportButton.vue";
+  import { ref } from 'vue'
 
-const capabilities = [
-  {
-    icon: "📗",
-    title: "Essential XlsIO",
-    desc: "Branschledande prestanda för Excel. Stödjer avancerade pivot-tabeller och villkorsstyrd formatering.",
-    badge: "✓ Utmärkt",
-    status: "ok",
-  },
-  {
-    icon: "📕",
-    title: "Essential PDF",
-    desc: "Skapar PDF via objektmodell. Har stöd för HTML-konvertering via QtBinaries/Blink-insticksmodul.",
-    badge: "✓ Full",
-    status: "ok",
-  },
-  {
-    icon: "📘",
-    title: "Presentation",
-    desc: "Skapa PowerPoint-slides med full kontroll över former, textrutor och animationer.",
-    badge: "✓ Mycket bra",
-    status: "ok",
-  },
-  {
-    icon: "🏗️",
-    title: "Arkitektur",
-    desc: "Helt skriven i C#. Inga beroenden av COM-objekt eller installerad Microsoft Office.",
-    badge: "✓ Native",
-    status: "ok",
-  },
-  {
-    icon: "📊",
-    title: "Grafer",
-    desc: "Stödjer skapande av riktiga, redigerbara grafer inuti Excel och PowerPoint.",
-    badge: "✓ Ja",
-    status: "ok",
-  },
-  {
-    icon: "📜",
-    title: "Licens",
-    desc: "Kommersiell. Syncfusion erbjuder dock en 'Community License' för små bolag/individer.",
-    badge: "Villkorad",
-    status: "warn",
-  },
-];
+  const capabilities = [
+    {
+      icon: "🧮",
+      title: "Excel Formula Engine",
+      desc: "400+ built-in functions. The report calculates itself without backend logic.",
+      badge: "✓ Unique",
+      status: "ok",
+    },
+    {
+      icon: "📊",
+      title: "Native Office Charts",
+      desc: "Genererar 'riktiga' grafer i Excel/PPT som användaren kan redigera efteråt.",
+      badge: "✓ Best in Class",
+      status: "ok",
+    },
+    {
+      icon: "🔐",
+      title: "Digital Signatures",
+      desc: "Stöd för PAdES-standard och tidsstämplar för juridiskt bindande rapporter.",
+      badge: "✓ Enterprise",
+      status: "ok",
+    },
+    {
+      icon: "♿",
+      title: "Accessibility (PDF/UA)",
+      desc: "Skapar automatiskt taggade PDF:er som fungerar med skärmläsare.",
+      badge: "✓ Compliant",
+      status: "ok",
+    },
+    {
+      icon: "⚡",
+      title: "Template Markers",
+      desc: "Använd befintliga Excel-filer som mallar och fyll dem med data blixtsnabbt.",
+      badge: "✓ Time Saver",
+      status: "ok",
+    },
+    {
+      icon: "🆓",
+      title: "Community License",
+      desc: "Gratis för småbolag (<$1M omsättning). En enorm fördel mot IronSuite.",
+      badge: "✓ Generous",
+      status: "ok",
+    }
+  ];
 
 const codeExample = `using (ExcelEngine excelEngine = new ExcelEngine())
 {
@@ -140,6 +177,13 @@ const codeExample = `using (ExcelEngine excelEngine = new ExcelEngine())
     workbook.SaveAs(stream);
     return stream;
 }`;
+
+
+  const sfConfig = ref({
+    useFormulas: true,
+    encrypt: false,
+    nativeCharts: true
+  })
 </script>
 
 <style scoped src="../../assets/provider-styles.css"></style>
