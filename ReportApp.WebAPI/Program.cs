@@ -25,11 +25,12 @@ builder.Services.AddScoped<AnalysisService>();
 var jsreportTempDir = Path.Combine(Path.GetTempPath(), "reportapp_jsreport");
 if (!Directory.Exists(jsreportTempDir)) Directory.CreateDirectory(jsreportTempDir);
 
+// Program.cs - Runt rad 20-30
 builder.Services.AddJsReport(new LocalReporting()
     .UseBinary(jsreport.Binary.JsReportBinary.GetBinary())
     .KillRunningJsReportProcesses()
-    .TempDirectory(jsreportTempDir) // Metoden heter TempDirectory i 3.8.x
-    .AsUtility()                   // Detta krävs för att Create() ska fungera
+    .TempDirectory(jsreportTempDir)
+    .AsWebServer() // ÄNDRA FRÅN AsUtility() TILL AsWebServer()
     .Create());
 
 

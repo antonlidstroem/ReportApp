@@ -10,24 +10,29 @@
     <Compile Remove="Providers\IronSuiteProvider.cs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
-    <PackageReference Include="jsreport.AspNetCore" Version="3.8.1" />
-    <PackageReference Include="jsreport.Binary" Version="4.4.0" />
-    <PackageReference Include="jsreport.Local" Version="3.8.2" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="QuestPDF" Version="2026.2.4" />
-	  <PackageReference Include="ShapeCrawler" Version="0.50.0" />
-	  <PackageReference Include="Syncfusion.Pdf.Net.Core" Version="24.1.41" />
-	  <PackageReference Include="Syncfusion.XlsIO.Net.Core" Version="24.1.41" />
-	  <PackageReference Include="Syncfusion.Presentation.Net.Core" Version="24.1.41" />
-	  <PackageReference Include="Syncfusion.Licensing" Version="24.1.41" />
+	<ItemGroup>
+		<PackageReference Include="ClosedXML" Version="0.102.2" />
 
-	  <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-  </ItemGroup>
+		<PackageReference Include="DocumentFormat.OpenXml" Version="2.20.0" />
+
+		<PackageReference Include="jsreport.AspNetCore" Version="3.8.1" />
+		<PackageReference Include="jsreport.Binary" Version="4.4.0" />
+		<PackageReference Include="jsreport.Local" Version="3.8.2" />
+
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+
+		<PackageReference Include="QuestPDF" Version="2026.2.4" />
+		<PackageReference Include="ShapeCrawler" Version="0.50.0" />
+
+		<PackageReference Include="Syncfusion.Pdf.Net.Core" Version="24.1.41" />
+		<PackageReference Include="Syncfusion.XlsIO.Net.Core" Version="24.1.41" />
+		<PackageReference Include="Syncfusion.Presentation.Net.Core" Version="24.1.41" />
+		<PackageReference Include="Syncfusion.Licensing" Version="24.1.41" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+	</ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ReportApp.AnalysisEngine\ReportApp.AnalysisEngine.csproj" />
