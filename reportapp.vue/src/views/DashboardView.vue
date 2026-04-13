@@ -222,32 +222,32 @@ const heroMeta = [
   { val: '3', label: 'Format' },
 ]
 
-const providers = [
-  {
-    route: '/providers/quest', track: 2, icon: '🏗️', name: 'QuestPDF + ClosedXML + ShapeCrawler',
-    shortName: 'QuestOSS', description: 'Best-of-breed open source. Fluent C# API för PDF, ClosedXML för Excel, ShapeCrawler för PPT.',
-    tags: ['Open Source', 'Gratis', 'Kod-first'], cost: 'Gratis (Community)', costClass: 'free', color: '#22c55e',
-    scores: [{ l: 'PDF', v: 9 }, { l: 'Excel', v: 9 }, { l: 'Kostnad', v: 10 }],
-  },
-  {
-    route: '/providers/iron', track: 1, icon: '⚙️', name: 'IronSuite (PDF + XL + PPT)',
-    shortName: 'IronSuite', description: 'Enterprise-paket med HTML-till-PDF (Chromium), redigerbara Excel-grafer och PowerPoint.',
-    tags: ['Enterprise', 'HTML→PDF', 'Enhetlig'], cost: 'Betallicens ($$$)', costClass: 'paid', color: '#3b82f6',
-    scores: [{ l: 'HTML→PDF', v: 10 }, { l: 'Excel', v: 8 }, { l: 'Kostnad', v: 3 }],
-  },
-  {
-    route: '/providers/jsreport', track: 3, icon: '🌐', name: 'jsreport (Web Engine)',
-    shortName: 'jsreport', description: 'Chromium + Handlebars. Enda providern med Chart.js direkt i PDF-rapporten.',
-    tags: ['Chart.js', 'Handlebars', 'Web-standard'], cost: 'Open Source + Pro', costClass: 'freemium', color: '#a855f7',
-    scores: [{ l: 'Chart.js', v: 10 }, { l: 'PDF', v: 9 }, { l: 'PPT', v: 3 }],
-  },
-  {
-    route: '/providers/syncfusion', track: 4, icon: '💎', name: 'Syncfusion Essential Studio',
-    shortName: 'Syncfusion', description: 'Mogen enterprise-plattform. Native redigerbara grafer, 400+ formler, PDF/UA accessibility.',
-    tags: ['Native Grafer', 'Formler', 'PDF/UA'], cost: 'Community gratis / Pro', costClass: 'freemium', color: '#14b8a6',
-    scores: [{ l: 'Excel', v: 10 }, { l: 'PPT', v: 9 }, { l: 'Kostnad', v: 7 }],
-  },
-]
+  const providers = [
+    {
+      route: '/providers/jsreport', track: 1, icon: '🌐', name: 'jsreport (Pure Web)',
+      shortName: 'jsreport', description: 'Ren webb-motor. Bäst för PDF, men begränsad i Excel/PPT.',
+      tags: ['PDF Focus', 'Chart.js'], cost: 'OSS/Pro', costClass: 'freemium', color: '#a855f7',
+      scores: [{ l: 'PDF', v: 10 }, { l: 'Excel', v: 4 }]
+    },
+    {
+      route: '/providers/syncfusion', track: 2, icon: '💎', name: 'Syncfusion (Pure Native)',
+      shortName: 'Syncfusion', description: 'Ren enterprise-motor. Bäst för Office, men saknar HTML-rendering.',
+      tags: ['Office Focus', 'Formulas'], cost: 'Community', costClass: 'free', color: '#14b8a6',
+      scores: [{ l: 'Excel', v: 10 }, { l: 'PDF', v: 7 }]
+    },
+    {
+      route: '/providers/js-sync', track: 3, icon: '⚒️', name: 'jsreport + Syncfusion',
+      shortName: 'Hybrid A', description: 'Kombinerar jsreports design med Syncfusions datakraft.',
+      tags: ['Best of Both', 'Designer Friendly'], cost: 'Enterprise', costClass: 'paid', color: '#8b5cf6',
+      scores: [{ l: 'PDF', v: 10 }, { l: 'Excel', v: 10 }]
+    },
+    {
+      route: '/providers/play-sync', track: 4, icon: '🎭', name: 'Playwright + Syncfusion',
+      shortName: 'Hybrid B', description: 'Modern, snabb stack för både webb-PDF och native Office.',
+      tags: ['Modern', 'Lightweight PDF'], cost: 'Enterprise', costClass: 'paid', color: '#10b981',
+      scores: [{ l: 'PDF', v: 9 }, { l: 'Excel', v: 10 }]
+    }
+  ]
 
 const matrixFilters = [
   { id: 'all', label: 'Alla' },
@@ -374,7 +374,8 @@ function drawRadarCharts() {
       data: {
         labels: radarDims,
         datasets: [{
-          data: radarData[p.shortName],
+          // FIX: Add fallback empty array and cast to number[]
+          data: (radarData[p.shortName] ?? []) as number[],
           backgroundColor: `${p.color}22`,
           borderColor: p.color,
           pointBackgroundColor: p.color,
@@ -407,11 +408,14 @@ function drawBenchChart() {
     type: 'bar',
     data: {
       labels: recent.map(r => `${r.provider} ${r.format.toUpperCase()}`),
+      // Find this block in drawBenchChart()
       datasets: [{
         data: recent.map(r => r.generationMs),
         backgroundColor: recent.map(r => {
-          const p = providers.find(p => p.shortName === r.provider || r.provider.includes(p.shortName.split(' ')[0]))
-          return (p?.color ?? '#6b7280') + 'cc'
+          const p = providers.find(p => p.shortName === r.provider || r.provider.includes(p.shortName.split(' ')[0]));
+          // FIX: Provide a hard fallback color string
+          const color = p?.color ?? '#64748b';
+          return color + 'cc';
         }),
         borderRadius: 4,
       }]

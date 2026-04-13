@@ -1,17 +1,16 @@
 import { createRouter, createWebHistory } from "vue-router";
 import DashboardView from "../views/DashboardView.vue";
-import QuestView from "../views/providers/QuestView.vue";
-
+import JsReportView from "../views/providers/JsReportView.vue";
+import SyncfusionView from "../views/providers/SyncfusionView.vue";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", component: DashboardView },
-    { path: "/providers/quest", component: QuestView },
-    // Vi behöver skapa dessa två (se steg 3):
-    { path: "/providers/iron", component: () => import("../views/providers/IronView.vue") },
-    { path: "/providers/jsreport", component: () => import("../views/providers/JsReportView.vue") },
-    { path: "/providers/syncfusion", component: () => import("../views/providers/SyncfusionView.vue") },
+    { path: "/providers/jsreport", component: JsReportView },
+    { path: "/providers/syncfusion", component: SyncfusionView },
+    { path: "/providers/js-sync", component: () => import("../views/providers/CompositeJsSyncView.vue") },
+    { path: "/providers/play-sync", component: () => import("../views/providers/CompositePlaywrightSyncView.vue") },
   ],
 });
 
