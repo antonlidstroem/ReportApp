@@ -3,6 +3,7 @@ using jsreport.Binary;
 using jsreport.Local;
 using jsreport.Shared;
 using ReportApp.AnalysisEngine.Services;
+using ReportApp.Backend.Providers;
 using ReportApp.Core.Data;
 using ReportApp.WebAPI.Interfaces;
 using ReportApp.WebAPI.Providers;
@@ -46,7 +47,7 @@ builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();
 // Activate the providers you have installed.
 // Each can be toggled independently.
 
-builder.Services.AddScoped<IReportProvider, QuestOpenSourceProvider>();
+builder.Services.AddSingleton<PlaywrightProvider>();
 // builder.Services.AddScoped<IReportProvider, IronSuiteProvider>();
 builder.Services.AddScoped<IReportProvider, JsReportProvider>();
 

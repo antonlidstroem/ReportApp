@@ -411,11 +411,17 @@ function drawBenchChart() {
       // Find this block in drawBenchChart()
       datasets: [{
         data: recent.map(r => r.generationMs),
+        // Sök upp drawBenchChart och ändra backgroundColor-delen:
+        // DashboardView.vue
         backgroundColor: recent.map(r => {
-          const p = providers.find(p => p.shortName === r.provider || r.provider.includes(p.shortName.split(' ')[0]));
-          // FIX: Provide a hard fallback color string
-          const color = p?.color ?? '#64748b';
-          return color + 'cc';
+          const p = providers.find(p =>
+            p.shortName === r.provider ||
+            r.provider.includes(p.shortName.split(' ')[0])
+          );
+
+          // FIX: Definiera färgen som en sträng och använd en fallback
+          const baseColor: string = p?.color ?? '#6b7280';
+          return baseColor + 'cc'; // 'cc' sätter alpha-kanalen till ~80%
         }),
         borderRadius: 4,
       }]

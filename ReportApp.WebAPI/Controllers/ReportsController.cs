@@ -157,30 +157,5 @@ public class ReportsController : ControllerBase
         return ids.Any() ? ids : null; // Om listan är tom, returnera null (hämta alla)
     }
 
-    [HttpPost("export/play-sync")]
-    public async Task<IActionResult> ExportPlaySync([FromBody] ExportRequest request)
-    {
-        var data = await _surveyService.GetReportData(request.SurveyId);
-
-        if (request.Format == "pdf")
-        {
-            // Use Playwright for PDF
-            var html = _templateService.RenderHtml(request.Template, data);
-            var pdfBytes = await _playwrightProvider.GeneratePdfAsync(html);
-            return File(pdfBytes, "application/pdf", "report.pdf");
-        }
-        else
-        {
-            // Use Syncfusion for Excel or PPT
-            var officeBytes = request.Format == "xlsx"
-                ? _syncfusionProvider.GenerateExcel(data)
-                : _syncfusionProvider.GeneratePpt(data);
-
-            string mime = request.Format == "xlsx"
-                ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-
-            return File(officeBytes, mime, $"report.{request.Format}");
-        }
-    }
+   
 }

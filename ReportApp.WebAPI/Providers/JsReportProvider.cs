@@ -10,7 +10,6 @@ public class JsReportProvider : IReportProvider, ISupportHtmlTemplate
     private readonly IRenderService _jsreport;
     private readonly JsReportPdfGenerator _pdfGenerator;
     private readonly JsReportExcelGenerator _excelGenerator;
-    private readonly ShapeCrawlerPptGenerator _pptGenerator;
 
     public JsReportProvider(IRenderService jsreport)
     {
@@ -18,7 +17,6 @@ public class JsReportProvider : IReportProvider, ISupportHtmlTemplate
         // Vi initierar våra specialister
         _pdfGenerator = new JsReportPdfGenerator(_jsreport);
         _excelGenerator = new JsReportExcelGenerator(_jsreport);
-        _pptGenerator = new ShapeCrawlerPptGenerator();
     }
 
     public string Name => "jsreport";
