@@ -10,13 +10,14 @@ public class JsReportProvider : IReportProvider, ISupportHtmlTemplate
     private readonly IRenderService _jsreport;
     private readonly JsReportPdfGenerator _pdfGenerator;
     private readonly JsReportExcelGenerator _excelGenerator;
+    private readonly SyncfusionPptGenerator _pptGenerator; // Tillagd
 
     public JsReportProvider(IRenderService jsreport)
     {
         _jsreport = jsreport;
-        // Vi initierar våra specialister
         _pdfGenerator = new JsReportPdfGenerator(_jsreport);
         _excelGenerator = new JsReportExcelGenerator(_jsreport);
+        _pptGenerator = new SyncfusionPptGenerator(); 
     }
 
     public string Name => "jsreport";

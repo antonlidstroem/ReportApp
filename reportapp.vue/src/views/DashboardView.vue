@@ -399,42 +399,45 @@ function drawRadarCharts() {
   })
 }
 
-function drawBenchChart() {
-  if (!benchBarRef.value || !benchmarks.results.length) return
-  if (benchBarChart) benchBarChart.destroy()
+  function drawBenchChart() {
+    // 1. Skapa en lokal referens för att "låsa" typen så TS inte tvivlar
+    const canvasElement = benchBarRef.value;
+    if (!canvasElement || !benchmarks.results.length) return;
 
-  const recent = benchmarks.results.slice(0, 8).reverse()
-  benchBarChart = new Chart(benchBarRef.value, {
-    type: 'bar',
-    data: {
-      labels: recent.map(r => `${r.provider} ${r.format.toUpperCase()}`),
-      // Find this block in drawBenchChart()
-      datasets: [{
-        data: recent.map(r => r.generationMs),
-        // Sök upp drawBenchChart och ändra backgroundColor-delen:
-        // DashboardView.vue
-        backgroundColor: recent.map(r => {
-          const p = providers.find(p =>
-            p.shortName === r.provider ||
-            r.provider.includes(p.shortName.split(' ')[0])
-          );
+    if (benchBarChart) benchBarChart.destroy();
 
-          // FIX: Definiera färgen som en sträng och använd en fallback
-          const baseColor: string = p?.color ?? '#6b7280';
-          return baseColor + 'cc'; // 'cc' sätter alpha-kanalen till ~80%
-        }),
-        borderRadius: 4,
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } },
-        x: { ticks: { color: '#94a3b8', font: { size: 9 }, maxRotation: 30 }, grid: { display: false } },
+    const recent = benchmarks.results.slice(0, 8).reverse();
+
+    benchBarChart = new Chart(canvasElement, { // Använd den lokala variabeln här
+      type: 'bar',
+      data: {
+        labels: recent.map(r => `${r.provider ?? 'Okänd'} ${(r.format ?? 'PDF').toUpperCase()}`),
+        datasets: [{
+          data: recent.map(r => r.generationMs),
+          backgroundColor: recent.map(r => {
+            const providerName = r.provider ?? '';
+            const p = providers.find(p =>
+              p.shortName === providerName ||
+              // FIX: Lägg till ?? '' för att garantera en sträng till .includes()
+              providerName.includes(p.shortName.split(' ')[0] ?? '')
+            );
+
+            const color: string = p?.color ?? '#6b7280';
+            return color + 'cc';
+          }),
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } },
+          x: { ticks: { color: '#94a3b8', font: { size: 9 }, maxRotation: 30 }, grid: { display: false } },
+        }
       }
-    }
-  })
-}
+    });
+  }
+  
 
 onMounted(async () => {
   if (!store.surveys.length) {

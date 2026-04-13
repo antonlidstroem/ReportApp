@@ -1,34 +1,62 @@
-﻿using System.Threading.Tasks;
-using DocumentFormat.OpenXml.Spreadsheet;
-using Microsoft.Playwright;
+﻿using Microsoft.Playwright;
+using System.Threading;
 
-namespace ReportApp.Backend.Providers
+namespace ReportApp.Backend.Providers;
+
+public class PlaywrightProvider : IAsyncDisposable
 {
-    public class PlaywrightProvider
+    private IPlaywright? _playwright;
+    private IBrowser? _browser;
+    private readonly SemaphoreSlim _lock = new(1, 1);
+
+    private async Task<IBrowser> GetBrowserAsync()
     {
-        public async Task<byte[]> GeneratePdfAsync(string htmlContent)
+        if (_browser != null) return _browser;
+
+        await _lock.WaitAsync();
+        try
         {
-            using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+            if (_browser == null)
             {
-                Headless = true
-            });
-
-            var page = await browser.NewPageAsync();
-
-            // Set content and wait for network to be idle (important for charts/images)
-            await page.SetContentAsync(htmlContent, new PageSetContentOptions
-            {
-                WaitUntil = WaitUntilState.NetworkIdle
-            });
-
-            // Generate PDF
-            return await page.PdfAsync(new PagePdfOptions
-            {
-                Format = "A4",
-                PrintBackground = true,
-                Margin = new Margin { Top = "1cm", Right = "1cm", Bottom = "1cm", Left = "1cm" }
-            });
+                _playwright = await Playwright.CreateAsync();
+                _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+                {
+                    Headless = true
+                });
+            }
+            return _browser;
         }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+
+    public async Task<byte[]> GeneratePdfAsync(string htmlContent)
+    {
+        var browser = await GetBrowserAsync();
+
+        // Vi skapar en ny kontext/sida för varje anrop, men behåller webbläsaren!
+        await using var context = await browser.NewContextAsync();
+        var page = await context.NewPageAsync();
+
+        await page.SetContentAsync(htmlContent, new PageSetContentOptions
+        {
+            WaitUntil = WaitUntilState.NetworkIdle
+        });
+
+        return await page.PdfAsync(new PagePdfOptions
+        {
+            Format = "A4",
+            PrintBackground = true,
+            Margin = new Margin { Top = "1cm", Right = "1cm", Bottom = "1cm", Left = "1cm" }
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_browser != null) await _browser.CloseAsync();
+        _playwright?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
