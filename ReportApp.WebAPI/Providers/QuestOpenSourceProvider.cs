@@ -7,6 +7,8 @@ using ReportApp.AnalysisEngine.Models;
 using ReportApp.WebAPI.Interfaces;
 using ShapeCrawler;
 using ShapeCrawler.Shapes;
+using System.Linq;
+
 
 namespace ReportApp.WebAPI.Providers;
 
@@ -133,22 +135,41 @@ public class QuestOpenSourceProvider : IReportProvider
 
     public Task<byte[]> GeneratePptAsync(ReportDataViewModel data)
     {
-        var prs = new Presentation();
-
+        // Explicit referens för att undvika Syncfusion-krock
+        var prs = new ShapeCrawler.Presentation();
         var slide = prs.Slides[0];
-        slide.Background.Fill.SolidColor.Color = ColorTranslator.FromHtml("#0f2d1a");
 
-        var title = slide.Shapes.AddShape(ShapeType.Rectangle, 50, 100, 600, 80);
-        title.TextFrame.Text = data.SurveyTitle;
-        title.Fill.FillType = FillType.NoFill;
+        // 1. Bakgrund
+        slide.Shapes.AddRectangle(0, 0, 720, 540);
+        var bg = slide.Shapes.Last();
+        // FIX: Använd ColorHex istället för Hex
+        bg.Fill.ColorHex = "0f2d1a";
 
-        var sub = slide.Shapes.AddShape(ShapeType.Rectangle, 50, 200, 600, 40);
-        sub.TextFrame.Text = $"{data.CompanyName} · {data.GeneratedAt:yyyy-MM-dd}";
-        sub.Fill.FillType = FillType.NoFill;
+        // 2. Titel
+        slide.Shapes.AddRectangle(50, 100, 600, 80);
+        // FIX: Använd fullständig namnrymd för IAutoShape
+        var title = slide.Shapes.Last() as ShapeCrawler.IAutoShape;
+        if (title != null)
+        {
+            title.TextFrame.Text = data.SurveyTitle;
+            title.Fill.ColorHex = null; // Motsvarar transparent/ingen fyllning
+        }
+
+        // 3. Undertitel
+        slide.Shapes.AddRectangle(50, 200, 600, 40);
+        var sub = slide.Shapes.Last() as ShapeCrawler.IAutoShape;
+        if (sub != null)
+        {
+            sub.TextFrame.Text = $"{data.CompanyName} · {data.GeneratedAt:yyyy-MM-dd}";
+            sub.Fill.ColorHex = null;
+        }
 
         var file = Path.GetTempFileName() + ".pptx";
         prs.SaveAs(file);
 
-        return Task.FromResult(File.ReadAllBytes(file));
+        var bytes = File.ReadAllBytes(file);
+        if (File.Exists(file)) File.Delete(file);
+
+        return Task.FromResult(bytes);
     }
 }
