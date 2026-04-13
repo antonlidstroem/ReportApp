@@ -50,6 +50,8 @@ builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();
 builder.Services.AddSingleton<PlaywrightProvider>();
 // builder.Services.AddScoped<IReportProvider, IronSuiteProvider>();
 builder.Services.AddScoped<IReportProvider, JsReportProvider>();
+builder.Services.AddScoped<IReportProvider, JsSyncHybridProvider>(); // Om du skapat denna
+builder.Services.AddScoped<IReportProvider, PlaySyncHybridProvider>();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
 // Read allowed origins from config so you don't have to touch code for port changes.

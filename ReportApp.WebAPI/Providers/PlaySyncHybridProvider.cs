@@ -1,7 +1,7 @@
 ﻿using ReportApp.AnalysisEngine.Models;
 using ReportApp.WebAPI.Interfaces;
 using ReportApp.WebAPI.Providers.Generators;
-using ReportApp.Backend.Providers;
+using ReportApp.Backend.Providers; // Se till att din PlaywrightProvider ligger här
 
 namespace ReportApp.WebAPI.Providers;
 
@@ -18,14 +18,14 @@ public class PlaySyncHybridProvider : IReportProvider, ISupportHtmlTemplate
         _ppt = new SyncfusionPptGenerator();
     }
 
-    public string Name => "play-sync";
+    public string Name => "play-sync"; // Matchar Vue-sidans namn
 
     public async Task<byte[]> GeneratePdfAsync(ReportDataViewModel data) =>
-        await GeneratePdfFromTemplateAsync(data, "<html><body><h1>Default Playwright Render</h1></body></html>");
+        await GeneratePdfFromTemplateAsync(data, "<html><body><h1>Default Playwright</h1></body></html>");
 
     public async Task<byte[]> GeneratePdfFromTemplateAsync(ReportDataViewModel data, string htmlTemplate)
     {
-        // Simple manual replacement since Playwright doesn't have a built-in Handlebars engine
+        // Enkel token-ersättning (eller använd Handlebars.Net om du vill vara avancerad)
         var html = htmlTemplate.Replace("{{SurveyTitle}}", data.SurveyTitle);
         return await _playwright.GeneratePdfAsync(html);
     }

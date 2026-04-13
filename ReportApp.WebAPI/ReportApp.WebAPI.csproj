@@ -29,7 +29,7 @@
 		<PackageReference Include="Syncfusion.Presentation.Net.Core" Version="24.1.41" />
 		<PackageReference Include="Syncfusion.Licensing" Version="24.1.41" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
-		<PackageReference Include="Microsoft.Playwright" Version="1.42.0" />
+		<PackageReference Include="Microsoft.Playwright" Version="1.59.0" />
 	</ItemGroup>
 
   <ItemGroup>
