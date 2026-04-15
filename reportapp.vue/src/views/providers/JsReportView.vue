@@ -1,438 +1,267 @@
 <template>
-  <div class="jsreport-page">
-    <!-- ── HERO ── -->
+  <div class="page">
     <div class="hero">
-      <div class="hero-bg">
-        <div class="web-rings">
-          <div class="ring" v-for="i in 4" :key="i" :style="`--i:${i}`"></div>
-        </div>
-        <div class="glow-purple"></div>
-      </div>
-      <div class="hero-inner">
-        <router-link to="/" class="back-link">← Dashboard</router-link>
-        <div class="hero-eyebrow">
-          <span class="track-dot"></span>
-          Spår 3 — Web-Standard Engine
-        </div>
+      <div class="hero-rings"><div v-for="i in 4" :key="i" class="ring" :style="`--i:${i}`"></div></div>
+      <div class="hero-content">
+        <router-link to="/" class="back">← Dashboard</router-link>
+        <div class="eyebrow">Track 1 · Web-Standard Engine</div>
         <h1>jsreport</h1>
-        <div class="hero-tagline">HTML + CSS + JavaScript → PDF</div>
-        <p class="hero-sub">
-          Den enda providern som kör <strong>riktig Chart.js</strong> inuti rapporten.
-          Chromium renderar din HTML precis som webbläsaren — med alla grafer, animationer
-          och CSS3-features intakta.
-        </p>
-        <div class="hero-badges">
-          <span class="badge purple">★ Chart.js direkt i PDF</span>
-          <span class="badge purple">✓ Handlebars templating</span>
-          <span class="badge green">✓ Open Source + Pro</span>
-          <span class="badge red">✗ PPT saknas nativt</span>
-          <span class="badge red">✗ Kräver Chromium-process</span>
+        <div class="tagline">HTML + CSS + JavaScript → PDF</div>
+        <p>The only provider that runs real Chart.js inside reports. Chromium renders your HTML — every gradient, every chart — and captures it as a pixel-perfect PDF.</p>
+        <div class="verdicts">
+          <div class="verdict ok">✓ Best for: Designer-owned HTML/CSS templates with live charts</div>
+          <div class="verdict warn">⚠ Avoid if: You need live Excel formulas or editable PPT charts</div>
+        </div>
+        <div class="badges">
+          <span class="b purple">★ Chart.js in PDF</span>
+          <span class="b purple">✓ Handlebars templating</span>
+          <span class="b green">✓ Preview = PDF output</span>
+          <span class="b red">✗ No native PPT</span>
+          <span class="b red">✗ 2–5s cold start</span>
         </div>
       </div>
-      <div class="hero-demo-panel">
-        <div class="browser-chrome">
-          <div class="bc-bar">
-            <div class="bc-dots"><span></span><span></span><span></span></div>
-            <div class="bc-url">report.html → PDF</div>
-          </div>
-          <div class="bc-content">
-            <div class="report-preview">
-              <h3 style="color:#a855f7;margin:0 0 8px;font-size:13px">{{ demoTitle }}</h3>
-              <div class="rp-chart">
-                <canvas ref="heroChart" height="120"></canvas>
-              </div>
-              <div class="rp-table">
-                <div class="rpt-row header"><span>Fråga</span><span>Snitt</span></div>
-                <div v-for="q in demoQs" :key="q.t" class="rpt-row">
-                  <span>{{ q.t }}</span>
-                  <span :style="`color:${hScoreColor(q.v)}`">{{ q.v.toFixed(1) }}</span>
-                </div>
-              </div>
-            </div>
+      <div class="hero-browser">
+        <div class="bc"><div class="bc-dots"><span></span><span></span><span></span></div><span class="bc-url">{{SurveyTitle}} → Chromium → PDF</span></div>
+        <div class="bb">
+          <canvas ref="heroRef" height="110"></canvas>
+          <div class="mini-rows">
+            <div v-for="q in heroRows" :key="q.t" class="mr"><span>{{ q.t }}</span><div class="mrb"><div :style="`width:${q.v*20}%;background:${sc(q.v)}`"></div></div><span :style="`color:${sc(q.v)}`">{{ q.v }}</span></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── THE JSREPORT PIPELINE ── -->
     <section class="section">
-      <h2 class="section-title">Hur jsreport fungerar</h2>
-      <div class="pipeline">
-        <div class="pipe-step" v-for="(step, i) in pipeline" :key="i">
-          <div class="ps-num">{{ i + 1 }}</div>
-          <div class="ps-icon">{{ step.icon }}</div>
-          <div class="ps-label">{{ step.label }}</div>
-          <div class="ps-desc">{{ step.desc }}</div>
-          <div v-if="i < pipeline.length - 1" class="ps-arrow">→</div>
+      <div class="eyebrow-sm">CAPABILITY 1 — UNIQUE TO jsreport</div>
+      <h2>Edit data → chart updates → PDF is this exact view</h2>
+      <p class="sub">Chromium waits for <code>networkidle</code> — all JS executed, all charts painted — then screenshots. Move the sliders. The chart updates live. <strong>That is exactly what the PDF will contain.</strong></p>
+      <div class="chartlab">
+        <div class="cl-left">
+          <div class="cl-header"><span>Survey data</span><button class="btn-sm" @click="randomize">↻ Randomize</button></div>
+          <div class="cl-sliders">
+            <div v-for="(r, i) in chartRows" :key="i" class="cl-row">
+              <span class="cl-lbl">{{ r.label }}</span>
+              <input type="range" min="1" max="5" step="0.1" v-model.number="r.value" class="cl-range" :style="`--c:${sc(r.value)}`" @input="updateLiveChart" />
+              <span :style="`color:${sc(r.value)}`" class="cl-val">{{ r.value.toFixed(1) }}</span>
+            </div>
+          </div>
+          <div class="cl-types">
+            <button v-for="ct in chartTypes" :key="ct.id" :class="['ct-btn', { active: activeCT === ct.id }]" @click="activeCT = ct.id; rebuildLiveChart()">{{ ct.icon }} {{ ct.label }}</button>
+          </div>
+          <div class="cl-note"><strong>How it works:</strong> Template has <code>&lt;canvas&gt;</code> + <code>new Chart(...)</code>. Chromium executes JS, waits for idle, screenshots → PDF.</div>
+        </div>
+        <div class="cl-right">
+          <div class="cl-plabel">Live Chart.js → identical to PDF</div>
+          <canvas ref="liveRef" height="280"></canvas>
         </div>
       </div>
     </section>
 
-    <!-- ── CHART.JS SHOWCASE ── -->
     <section class="section">
-      <h2 class="section-title">Chart.js direkt i rapporten — unikt för jsreport</h2>
-      <div class="chartjs-showcase">
-        <div class="cjs-left">
-          <div class="feature-highlight">
-            <div class="fh-icon">🎯</div>
-            <div>
-              <div class="fh-title">Varför detta är unikt</div>
-              <p class="fh-desc">
-                jsreport renderar via Chromium och väntar på <code>networkidle</code> — d.v.s.
-                tills alla JavaScript-grafer har ritats klart. Resultatet är en PDF där graferna
-                är identiska med din webbvy.
-              </p>
-            </div>
-          </div>
-          <div class="handlebars-demo">
-            <div class="hb-header">Handlebars-mall med Chart.js</div>
-            <pre class="hb-code"><code>{{ handlebarsTemplate }}</code></pre>
-          </div>
+      <div class="eyebrow-sm">CAPABILITY 2</div>
+      <h2>Live PDF Preview — exact HTML sent to Chromium</h2>
+      <p class="sub">This iframe renders the actual HTML template sent to jsreport. Switch between templates. The PDF is a pixel-perfect capture of this view.</p>
+      <LiveReportPreview provider="jsreport" :show-sliders="true" />
+    </section>
+
+    <section class="section">
+      <div class="eyebrow-sm">CAPABILITY 3</div>
+      <h2>Handlebars — report logic in HTML, not C#</h2>
+      <p class="sub">Toggle features and watch the template update live. A designer controls this — zero C# changes needed.</p>
+      <div class="hb-demo">
+        <div class="hbd-left">
+          <label v-for="t in hbToggles" :key="t.id" class="hbd-toggle">
+            <input type="checkbox" v-model="t.enabled" />
+            <div class="track"><div class="thumb"></div></div>
+            <div><span class="tt">{{ t.title }}</span><span class="td">{{ t.desc }}</span></div>
+          </label>
         </div>
-        <div class="cjs-right">
-          <div class="live-charts-title">Live-exempelgrafer (identiska med PDF-output)</div>
-          <div class="charts-4-grid">
-            <div class="chart-card">
-              <div class="chart-card-title">📊 Stapeldiagram</div>
-              <canvas ref="barRef" height="160"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-card-title">🍩 Donut-kategori</div>
-              <canvas ref="doughnutRef" height="160"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-card-title">📈 Trendlinje</div>
-              <canvas ref="lineRef" height="160"></canvas>
-            </div>
-            <div class="chart-card">
-              <div class="chart-card-title">🎯 Radar</div>
-              <canvas ref="radarRef" height="160"></canvas>
-            </div>
-          </div>
+        <div class="hbd-right">
+          <div class="hbd-header"><span>Generated template fragment</span><span class="hbd-lang">Handlebars</span></div>
+          <pre class="hbd-pre"><code>{{ generatedHb }}</code></pre>
         </div>
       </div>
     </section>
 
-    <!-- ── HANDLEBARS LOGIC ── -->
     <section class="section">
-      <h2 class="section-title">Logik direkt i HTML-mallen</h2>
-      <div class="hb-features">
-        <div class="hbf-card" v-for="f in hbFeatures" :key="f.title" :class="f.status">
-          <div class="hbf-icon">{{ f.icon }}</div>
-          <div class="hbf-title">{{ f.title }}</div>
-          <pre class="hbf-code"><code>{{ f.code }}</code></pre>
-          <div class="hbf-desc">{{ f.desc }}</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── STRENGTHS & WEAKNESSES ── -->
-    <section class="section">
+      <div class="eyebrow-sm">HONEST ASSESSMENT</div>
+      <h2>Strengths and weaknesses</h2>
       <div class="sw-grid">
-        <div class="sw-panel strengths">
-          <h3>🌐 Styrkor</h3>
-          <div v-for="s in strengthsList" :key="s.title" class="sw-item">
-            <div class="sw-title">{{ s.title }}</div>
-            <div class="sw-desc">{{ s.desc }}</div>
-          </div>
+        <div class="sw-col sw-purple">
+          <h3>🌐 Strengths</h3>
+          <div v-for="s in strengths" :key="s.t" class="sw-item"><div class="sw-t">{{ s.t }}</div><div class="sw-d">{{ s.d }}</div></div>
         </div>
-        <div class="sw-panel weaknesses">
-          <h3>⚡ Svagheter</h3>
-          <div v-for="w in weaknessList" :key="w.title" class="sw-item">
-            <div class="sw-title">{{ w.title }}</div>
-            <div class="sw-desc">{{ w.desc }}</div>
-          </div>
+        <div class="sw-col sw-yellow">
+          <h3>⚠ Weaknesses</h3>
+          <div v-for="w in weaknesses" :key="w.t" class="sw-item"><div class="sw-t">{{ w.t }}</div><div class="sw-d">{{ w.d }}</div></div>
         </div>
       </div>
     </section>
 
-    <!-- ── WORKSPACE ── -->
+    <StressTestPanel provider="jsreport" provider-color="#a855f7" />
+
     <section class="section">
-      <h2 class="section-title">Testa med din data</h2>
+      <div class="eyebrow-sm">EXPORT WORKSPACE</div>
+      <h2>Export with real data</h2>
+      <p class="sub">The "Full Report" and "Executive" templates include Chart.js charts rendered by Chromium. Select a survey and export.</p>
       <div class="workspace">
-        <div class="workspace-left">
-          <SurveyPicker />
-          <ModuleList />
-        </div>
-        <div class="workspace-right">
-          <TemplateDesigner provider-name="jsreport" :supports-html-template="true" />
-          <ExportButton provider="jsreport" :supports-html-template="true" />
-        </div>
+        <div class="ws-left"><SurveyPicker /><ModuleList /></div>
+        <div class="ws-right"><ExportButton provider="jsreport" :supports-html-template="true" /><TemplateDesigner provider-name="jsreport" :supports-html-template="true" /></div>
       </div>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import SurveyPicker from '../../components/SurveyPicker.vue'
 import ModuleList from '../../components/ModuleList.vue'
 import TemplateDesigner from '../../components/TemplateDesigner.vue'
 import ExportButton from '../../components/ExportButton.vue'
+import StressTestPanel from '../../components/StressTestPanel.vue'
+import LiveReportPreview from '../../components/LiveReportPreview.vue'
 import Chart from 'chart.js/auto'
 
-const heroChart = ref<HTMLCanvasElement>()
-const barRef = ref<HTMLCanvasElement>()
-const doughnutRef = ref<HTMLCanvasElement>()
-const lineRef = ref<HTMLCanvasElement>()
-const radarRef = ref<HTMLCanvasElement>()
+const heroRef = ref<HTMLCanvasElement>()
+const liveRef = ref<HTMLCanvasElement>()
+let liveChart: Chart | null = null
+const heroRows = [{ t: 'Utvilad på morgonen?', v: 3.1 }, { t: 'Återhämtningstid?', v: 3.5 }, { t: 'Stress kring deadlines?', v: 4.2 }]
+const sc = (v: number) => v >= 4 ? '#22c55e' : v >= 3 ? '#f59e0b' : '#ef4444'
+const chartRows = ref([{ label: 'Ledarskap', value: 4.1 }, { label: 'Psykosocialt', value: 3.2 }, { label: 'Hälsa', value: 3.8 }, { label: 'Säkerhet', value: 4.5 }, { label: 'Resurser', value: 3.5 }])
+const chartTypes = [{ id: 'bar', icon: '📊', label: 'Bar' }, { id: 'line', icon: '📈', label: 'Line' }, { id: 'radar', icon: '🎯', label: 'Radar' }, { id: 'doughnut', icon: '🍩', label: 'Donut' }]
+const activeCT = ref('bar')
 
-const demoTitle = 'Pulsmätning Stress & Belastning'
-const demoQs = [
-  { t: 'Utvilad på morgonen?', v: 3.1 },
-  { t: 'Återhämtningstid?', v: 3.5 },
-  { t: 'Stress kring deadlines?', v: 4.2 },
-]
+function randomize() { chartRows.value.forEach(r => { r.value = Math.round((1 + Math.random() * 4) * 10) / 10 }); rebuildLiveChart() }
+function updateLiveChart() {
+  if (!liveChart) return
+  liveChart.data.datasets[0].data = chartRows.value.map(r => r.value)
+  if (activeCT.value === 'bar') (liveChart.data.datasets[0] as import('chart.js').BarControllerDatasetOptions & {backgroundColor: string[]}).backgroundColor = chartRows.value.map(r => sc(r.value) + 'cc')
+  liveChart.update('none')
+}
+function rebuildLiveChart() {
+  if (!liveRef.value) return
+  if (liveChart) liveChart.destroy()
+  const isRound = activeCT.value === 'doughnut'
+  liveChart = new Chart(liveRef.value, {
+    type: activeCT.value as 'bar' | 'line' | 'radar' | 'doughnut',
+    data: { labels: chartRows.value.map(r => r.label), datasets: [{ data: chartRows.value.map(r => r.value), backgroundColor: isRound ? ['#a855f7','#7c3aed','#6d28d9','#5b21b6','#4c1d95'] : chartRows.value.map(r => sc(r.value) + 'cc'), borderColor: isRound ? 'transparent' : '#a855f7', borderWidth: 2, borderRadius: activeCT.value === 'bar' ? 4 : undefined, fill: activeCT.value === 'line' ? true : undefined, tension: 0.4, pointBackgroundColor: '#a855f7' }] },
+    options: { animation: { duration: 300 }, plugins: { legend: { display: isRound, labels: { color: '#94a3b8', font: { size: 10 } } } }, scales: activeCT.value === 'radar' ? { r: { min: 0, max: 5, ticks: { color: '#666', stepSize: 1, font: { size: 8 } }, grid: { color: '#2d1060' }, pointLabels: { color: '#94a3b8', font: { size: 9 } } } } : isRound ? {} : { y: { min: 0, max: 5, ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#1e1e3f' } }, x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#1e1e3f' } } } } as import('chart.js').ChartOptions
+  })
+}
 
-function hScoreColor(v: number) { return v >= 4 ? '#22c55e' : v >= 3 ? '#f59e0b' : '#ef4444' }
+const hbToggles = ref([
+  { id: 'exec', title: 'Executive summary', desc: 'KPI strip with OverallAverage, QuestionCount', enabled: true },
+  { id: 'trend', title: 'Monthly trend (Chart.js)', desc: 'Line chart from Trends data via Chromium JS', enabled: true },
+  { id: 'highlight', title: 'Highlight low scores', desc: 'Red row when AverageValue < 3.0', enabled: false },
+  { id: 'cats', title: 'Group by category', desc: 'Section headers, nested #each loops', enabled: false },
+])
 
-const pipeline = [
-  { icon: '📝', label: 'HTML + Handlebars', desc: 'Din rapport-mall med {{variabler}} och {{#each}}-loopar', },
-  { icon: '⚡', label: 'jsreport Engine', desc: 'Handlebars kompileras, data injiceras', },
-  { icon: '🌐', label: 'Chromium', desc: 'Renderar HTML, kör Chart.js, väntar på idle', },
-  { icon: '📸', label: 'PDF Screenshot', desc: 'Chrome printar sidan som perfekt PDF', },
-  { icon: '📦', label: 'byte[]', desc: 'Returneras till .NET API:et och skickas till klienten', },
-]
+const generatedHb = computed(() => {
+  const L: string[] = []
+  if (hbToggles.value.find(t => t.id === 'exec')?.enabled) { L.push('{{! Executive block }}'); L.push('<div class="kpis">'); L.push('  <b>{{OverallAverage}}</b> avg · {{QuestionCount}} questions'); L.push('</div>'); L.push('') }
+  if (hbToggles.value.find(t => t.id === 'cats')?.enabled) L.push('{{#each CategoryGroups}}\n<h2>{{name}}</h2>')
+  if (hbToggles.value.find(t => t.id === 'highlight')?.enabled) { L.push('{{#each QuestionSummaries}}'); L.push('<div class="row {{#if (lt AverageValue 3)}}low{{/if}}">'); L.push('  <span>{{Text}}</span><b>{{AverageValue}}</b>'); L.push('</div>\n{{/each}}') }
+  else { L.push('{{#each QuestionSummaries}}'); L.push('<div class="row">'); L.push('  <span>Q{{@index}}: {{Text}}</span>'); L.push('  <b>{{AverageValue}}</b>'); L.push('</div>\n{{/each}}') }
+  if (hbToggles.value.find(t => t.id === 'cats')?.enabled) L.push('{{/each}}')
+  if (hbToggles.value.find(t => t.id === 'trend')?.enabled) { L.push('\n{{! Chart.js runs in Chromium }}'); L.push('<canvas id="trend"></canvas>'); L.push('<script>'); L.push("  new Chart('trend',{type:'line',data:{"); L.push('    labels:[{{#each Trends}}\'{{MonthName}}\'{{#unless @last}},{{/unless}}{{/each}}],'); L.push('    datasets:[{data:[{{#each Trends}}{{AverageValue}},{{/each}}]}]'); L.push('  }});\n<\\/script>') }
+  return L.join('\n') || '<!-- Enable options above -->'
+})
 
-const handlebarsTemplate = `<html>
-<head>
-  <script src="https://cdn.chart.js"></scr` + `ipt>
-</head>
-<body>
-  <h1>{{SurveyTitle}}</h1>
-
-  <!-- Chart.js renderas av Chromium -->
-  <canvas id="myChart"></canvas>
-
-  {{#each QuestionSummaries}}
-  <div class="question {{#if (gt AverageValue 4)}}high{{/if}}">
-    <span>{{Text}}</span>
-    <strong>{{AverageValue}}</strong>
-  </div>
-  {{/each}}
-
-  <script>
-    new Chart(document.getElementById('myChart'), {
-      type: 'bar',
-      data: {
-        labels: [{{#each QuestionSummaries}}'Q{{@index}}'{{/unless @last}},{{/each}}],
-        datasets: [{ data: [{{#each QuestionSummaries}}{{AverageValue}},{{/each}}] }]
-      }
-    });
-  </scr` + `ipt>
-</body>
-</html>`
-
-const hbFeatures = [
-  {
-    status: 'ok', icon: '🔁',
-    title: '#each — Loopar',
-    code: `{{#each QuestionSummaries}}
-  <tr><td>{{Text}}</td>
-      <td>{{AverageValue}}</td></tr>
-{{/each}}`,
-    desc: 'Iterera över alla frågor, svar, trender etc. direkt i HTML-mallen.',
-  },
-  {
-    status: 'ok', icon: '🔀',
-    title: '#if / unless',
-    code: `{{#if (gt AverageValue 4)}}
-  <span class="high">★ Högt betyg</span>
-{{/if}}`,
-    desc: 'Villkorlig rendering baserat på datavärden.',
-  },
-  {
-    status: 'ok', icon: '🎨',
-    title: 'Inline CSS-logik',
-    code: `<div style="color:
-  {{#if (gt AverageValue 4)}}green
-  {{else}}red{{/if}}">
-  {{AverageValue}}
-</div>`,
-    desc: 'Dynamisk CSS baserat på data — omöjligt i kod-first providers.',
-  },
-  {
-    status: 'ok', icon: '🔢',
-    title: '@index — Räknare',
-    code: `{{#each QuestionSummaries}}
-  <tr>
-    <td>{{@index}}</td>
-    <td>{{Text}}</td>
-  </tr>
-{{/each}}`,
-    desc: 'Automatisk radnumrering med @index.',
-  },
-]
-
-const strengthsList = [
-  { title: 'Chart.js i PDF — unikt', desc: 'Enda providern som kan rendera interaktiva JS-grafer och "frysa" dem i en PDF via Chromium.' },
-  { title: 'Web-designers kan bygga mallar', desc: 'Hela mallen är HTML/CSS — din frontend-designer kan göra ändringar utan att röra C#-kod.' },
-  { title: 'Pixel-perfekt med webbvyn', desc: 'Rapporten ser exakt ut som din webbapp. Ingen diskrepans mellan "förhandsvisning" och PDF.' },
-  { title: 'Handlebars logik', desc: 'Villkor, loopar och helpers direkt i mallen. Reducerar backend-kod dramatiskt.' },
-  { title: 'Excel via HTML', desc: 'Genererar acceptabla Excel-filer via html-to-xlsx recipe utan extra bibliotek.' },
-]
-
-const weaknessList = [
-  { title: 'Chromium-process krävs', desc: 'jsreport startar en Node.js-process som hanterar Chromium. ~200MB disk, starttid ca 2-5s.' },
-  { title: 'PowerPoint saknas nativt', desc: 'jsreport har inget PPT-recipe. Vi använder ShapeCrawler som fallback, men med begränsad funktionalitet.' },
-  { title: 'Slow first render', desc: 'Första anropet startar Chromium-processen. Efterföljande är snabbare men fortfarande 1-3s.' },
-  { title: 'Excel-kvalitet begränsad', desc: 'HTML-to-xlsx ger enkla ark utan formler, conditionell formatering eller charts.' },
-  { title: 'Deployment-komplexitet', desc: 'Chromium-binaryns beroenden (Linux libs) kan vara en utmaning i containeriserade miljöer.' },
-]
+const strengths = [{ t: 'Chart.js in PDF — unique', d: 'Only provider running JS inside Chromium and capturing rendered charts as PDF.' }, { t: 'Designer-owned templates', d: 'HTML/CSS. Frontend designers change the layout without touching C#.' }, { t: 'Preview = PDF output', d: 'What the browser shows is what gets captured. Zero discrepancy.' }, { t: 'Handlebars logic', d: 'Conditions, loops, helpers in the template itself.' }]
+const weaknesses = [{ t: 'Chromium cold start (2–5s)', d: 'Node.js process + Chromium must initialize. First PDF is always slow.' }, { t: 'No native PowerPoint', d: 'No PPT recipe. This setup falls back to Syncfusion for PPT.' }, { t: 'Excel quality limited', d: 'HTML-to-xlsx: no formulas, no conditional formatting, no native charts.' }, { t: 'Deployment complexity', d: "Chromium's Linux library deps can be painful in minimal containers." }]
 
 onMounted(() => {
-  const purple = 'rgba(168,85,247,'
-  const categories = ['Ledarskap', 'Psykosocialt', 'Hälsa', 'Säkerhet', 'Resurser']
-  const catData = [4.1, 3.2, 3.8, 4.5, 3.5]
-
-  if (heroChart.value) {
-    new Chart(heroChart.value, {
-      type: 'bar',
-      data: {
-        labels: demoQs.map((_, i) => `Q${i+1}`),
-        datasets: [{ data: demoQs.map(q => q.v), backgroundColor: `${purple}0.7)`, borderColor: '#a855f7', borderWidth: 2, borderRadius: 4 }]
-      },
-      options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 5, ticks: { color: '#888', font: { size: 9 } }, grid: { color: '#1e1e3f' } }, x: { ticks: { color: '#888', font: { size: 9 } }, grid: { color: '#1e1e3f' } } } }
-    })
+  if (heroRef.value) {
+    new Chart(heroRef.value, { type: 'bar', data: { labels: heroRows.map((_, i) => `Q${i+1}`), datasets: [{ data: heroRows.map(q => q.v), backgroundColor: heroRows.map(q => sc(q.v) + 'aa'), borderColor: heroRows.map(q => sc(q.v)), borderWidth: 2, borderRadius: 3 }] }, options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 5, ticks: { color: '#666', font: { size: 8 } }, grid: { color: '#1e1e2e' } }, x: { ticks: { color: '#666', font: { size: 8 } }, grid: { display: false } } } } })
   }
-  if (barRef.value) {
-    new Chart(barRef.value, {
-      type: 'bar',
-      data: { labels: ['Q1','Q2','Q3','Q4','Q5'], datasets: [{ data: [3.2,4.1,3.8,4.3,3.5], backgroundColor: `${purple}0.7)`, borderColor: '#a855f7', borderRadius: 4 }] },
-      options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 5, ticks: { color: '#888' }, grid: { color: '#1e1e3f' } }, x: { ticks: { color: '#888' }, grid: { color: '#1e1e3f' } } } }
-    })
-  }
-  if (doughnutRef.value) {
-    new Chart(doughnutRef.value, {
-      type: 'doughnut',
-      data: { labels: categories, datasets: [{ data: catData, backgroundColor: ['#a855f7','#7c3aed','#6d28d9','#4c1d95','#2e1065'] }] },
-      options: { plugins: { legend: { labels: { color: '#94a3b8', font: { size: 9 } } } } }
-    })
-  }
-  if (lineRef.value) {
-    new Chart(lineRef.value, {
-      type: 'line',
-      data: { labels: ['Jan','Feb','Mar','Apr','Maj','Jun'], datasets: [{ data: [3.2,3.4,3.7,3.5,3.9,4.1], borderColor: '#a855f7', backgroundColor: `${purple}0.1)`, fill: true, tension: 0.4 }] },
-      options: { plugins: { legend: { display: false } }, scales: { y: { min: 2, max: 5, ticks: { color: '#888' }, grid: { color: '#1e1e3f' } }, x: { ticks: { color: '#888' }, grid: { color: '#1e1e3f' } } } }
-    })
-  }
-  if (radarRef.value) {
-    new Chart(radarRef.value, {
-      type: 'radar',
-      data: { labels: categories, datasets: [{ data: catData, backgroundColor: `${purple}0.2)`, borderColor: '#a855f7', pointBackgroundColor: '#a855f7' }] },
-      options: { plugins: { legend: { display: false } }, scales: { r: { min: 0, max: 5, ticks: { color: '#666', stepSize: 1 }, grid: { color: '#2e1065' }, pointLabels: { color: '#94a3b8', font: { size: 9 } } } } }
-    })
-  }
+  setTimeout(rebuildLiveChart, 120)
 })
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
-
-.jsreport-page { font-family: 'Outfit', sans-serif; max-width: 1300px; margin: 0 auto; color: #e2e8f0; }
-
-/* Hero */
-.hero {
-  position: relative; overflow: hidden; border-radius: 20px;
-  background: #0d0018;
-  margin-bottom: 48px;
-  display: grid; grid-template-columns: 1fr 380px;
-  min-height: 400px;
-}
-.hero-bg { position: absolute; inset: 0; pointer-events: none; }
-.web-rings { position: absolute; top: 50%; left: 40%; transform: translate(-50%,-50%); }
-.ring {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  border: 1px solid rgba(168,85,247,calc(0.15 - var(--i)*0.03));
-  border-radius: 50%;
-  width: calc(var(--i) * 140px);
-  height: calc(var(--i) * 140px);
-}
-.glow-purple { position: absolute; width: 500px; height: 500px; background: radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%); top: -100px; left: -100px; }
-
-.hero-inner { position: relative; z-index: 1; padding: 48px; }
-.back-link { color: rgba(255,255,255,0.4); text-decoration: none; font-size: 13px; display: block; margin-bottom: 20px; }
-.back-link:hover { color: #a855f7; }
-.hero-eyebrow { display: flex; align-items: center; gap: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #a855f7; margin-bottom: 16px; }
-.track-dot { width: 8px; height: 8px; border-radius: 50%; background: #a855f7; box-shadow: 0 0 12px #a855f7; }
-h1 { font-size: 52px; font-weight: 900; margin: 0 0 4px; color: #fff; letter-spacing: -2px; }
-.hero-tagline { font-size: 16px; color: #a855f7; margin-bottom: 16px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-.hero-sub { font-size: 15px; color: rgba(255,255,255,0.6); margin: 0 0 24px; max-width: 480px; line-height: 1.6; }
-.hero-sub strong { color: #c4b5fd; }
-.hero-badges { display: flex; flex-wrap: wrap; gap: 8px; }
-.badge { font-size: 11px; padding: 4px 12px; border-radius: 100px; border: 1px solid; font-weight: 500; }
-.badge.purple { color: #a855f7; border-color: rgba(168,85,247,0.3); background: rgba(168,85,247,0.08); }
-.badge.green { color: #22c55e; border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.08); }
-.badge.red { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); }
-
-/* Browser mockup */
-.hero-demo-panel { position: relative; z-index: 1; padding: 32px; display: flex; align-items: center; justify-content: center; }
-.browser-chrome { background: #1a0533; border-radius: 10px; overflow: hidden; width: 100%; box-shadow: 0 20px 60px rgba(168,85,247,0.2); border: 1px solid rgba(168,85,247,0.2); }
-.bc-bar { background: #2e1065; padding: 8px 12px; display: flex; align-items: center; gap: 10px; }
-.bc-dots { display: flex; gap: 5px; }
-.bc-dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2); }
-.bc-url { flex: 1; font-size: 11px; background: rgba(0,0,0,0.3); border-radius: 4px; padding: 3px 10px; color: #94a3b8; font-family: 'JetBrains Mono', monospace; }
-.bc-content { padding: 16px; }
-.report-preview h3 { font-family: 'Outfit', sans-serif; }
-.rp-chart { margin-bottom: 12px; }
-.rp-table { font-size: 10px; }
-.rpt-row { display: grid; grid-template-columns: 1fr 50px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: #94a3b8; }
-.rpt-row.header { font-weight: 700; color: #a855f7; border-bottom-color: rgba(168,85,247,0.3); }
-
-/* Pipeline */
-.section { margin-bottom: 48px; }
-.section-title { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #fff; margin: 0 0 24px; }
-.pipeline { display: flex; align-items: flex-start; gap: 0; background: #0d0018; border-radius: 12px; padding: 24px; border: 1px solid rgba(168,85,247,0.15); }
-.pipe-step { position: relative; flex: 1; text-align: center; }
-.ps-num { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: #a855f7; color: white; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-.ps-icon { font-size: 28px; margin-bottom: 8px; padding-top: 12px; }
-.ps-label { font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 4px; }
-.ps-desc { font-size: 10px; color: #6b7280; line-height: 1.4; padding: 0 8px; }
-.ps-arrow { position: absolute; right: -2px; top: 30px; font-size: 20px; color: rgba(168,85,247,0.5); }
-
-/* Chart.js showcase */
-.chartjs-showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.cjs-left { display: flex; flex-direction: column; gap: 16px; }
-.feature-highlight { display: flex; gap: 16px; background: rgba(168,85,247,0.06); border: 1px solid rgba(168,85,247,0.2); border-radius: 12px; padding: 20px; }
-.fh-icon { font-size: 32px; flex-shrink: 0; }
-.fh-title { font-size: 16px; font-weight: 700; color: #e2e8f0; margin-bottom: 6px; }
-.fh-desc { font-size: 12px; color: #94a3b8; line-height: 1.6; margin: 0; }
-.fh-desc code { background: rgba(168,85,247,0.2); padding: 1px 5px; border-radius: 3px; color: #c4b5fd; }
-.handlebars-demo { background: #120020; border-radius: 10px; overflow: hidden; }
-.hb-header { background: #2e1065; padding: 10px 16px; font-size: 12px; color: #a855f7; font-weight: 600; }
-.hb-code { margin: 0; padding: 16px; overflow-x: auto; }
-.hb-code code { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #c4b5fd; white-space: pre; line-height: 1.7; }
-
-.cjs-right { }
-.live-charts-title { font-size: 13px; font-weight: 600; color: #a855f7; margin-bottom: 12px; }
-.charts-4-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.chart-card { background: #120020; border: 1px solid rgba(168,85,247,0.15); border-radius: 8px; padding: 14px; }
-.chart-card-title { font-size: 11px; color: #94a3b8; margin-bottom: 8px; }
-
-/* HB Features */
-.hb-features { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.hbf-card { background: #0d0018; border: 1px solid rgba(168,85,247,0.15); border-radius: 10px; padding: 18px; }
-.hbf-card.ok { border-color: rgba(168,85,247,0.3); }
-.hbf-icon { font-size: 20px; margin-bottom: 8px; }
-.hbf-title { font-size: 12px; font-weight: 700; color: #e2e8f0; margin-bottom: 10px; }
-.hbf-code { margin: 0 0 10px; padding: 10px; background: #120020; border-radius: 6px; overflow-x: auto; }
-.hbf-code code { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #c4b5fd; white-space: pre; line-height: 1.5; }
-.hbf-desc { font-size: 11px; color: #6b7280; line-height: 1.5; }
-
-/* S&W */
-.sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.sw-panel { background: #0d0018; border-radius: 12px; padding: 28px; }
-.sw-panel.strengths { border-top: 3px solid #a855f7; }
-.sw-panel.weaknesses { border-top: 3px solid #f59e0b; }
-.sw-panel h3 { font-size: 16px; font-weight: 700; margin: 0 0 20px; }
-.strengths h3 { color: #a855f7; }
-.weaknesses h3 { color: #f59e0b; }
-.sw-item { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-.sw-item:last-child { border-bottom: none; }
-.sw-title { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; }
-.sw-desc { font-size: 12px; color: #64748b; line-height: 1.5; }
-
-/* Workspace */
-.workspace { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
-.workspace-left, .workspace-right { display: flex; flex-direction: column; gap: 16px; }
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{--accent:#a855f7;--surface:#0d0018;--surface-2:#120020;--border:rgba(168,85,247,0.15);--text:#e2e8f0;--text-muted:#64748b}
+.page{font-family:'Outfit',sans-serif;max-width:1300px;margin:0 auto;color:#e2e8f0}
+.hero{position:relative;overflow:hidden;border-radius:20px;background:#0d0018;margin-bottom:48px;display:grid;grid-template-columns:1fr 360px;min-height:420px}
+.hero-rings{position:absolute;top:50%;left:50%;pointer-events:none}
+.ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:1px solid rgba(168,85,247,calc(0.14 - var(--i)*0.025));border-radius:50%;width:calc(var(--i)*130px);height:calc(var(--i)*130px)}
+.hero-content{position:relative;z-index:1;padding:48px}
+.back{display:inline-block;color:rgba(255,255,255,0.3);text-decoration:none;font-size:13px;margin-bottom:20px;transition:color .15s}
+.back:hover{color:#a855f7}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#a855f7;margin-bottom:12px}
+.eyebrow-sm{font-size:10px;text-transform:uppercase;letter-spacing:3px;color:#a855f7;margin-bottom:6px;font-family:'JetBrains Mono',monospace}
+h1{font-size:54px;font-weight:900;margin:0 0 4px;color:#fff;letter-spacing:-2px}
+.tagline{font-family:'JetBrains Mono',monospace;font-size:14px;color:#a855f7;margin-bottom:16px}
+.hero-content>p{font-size:14px;color:rgba(255,255,255,.55);max-width:460px;line-height:1.6;margin:0 0 18px}
+.verdicts{display:flex;flex-direction:column;gap:5px;margin-bottom:18px}
+.verdict{font-size:11px;padding:5px 10px;border-radius:5px;font-weight:500}
+.verdict.ok{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);color:#22c55e}
+.verdict.warn{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);color:#f59e0b}
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.b{font-size:10px;padding:3px 10px;border-radius:100px;border:1px solid;font-weight:500}
+.b.purple{color:#a855f7;border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.06)}
+.b.green{color:#22c55e;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06)}
+.b.red{color:#ef4444;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.06)}
+.hero-browser{position:relative;z-index:1;padding:28px;display:flex;flex-direction:column;background:rgba(168,85,247,.03);border-left:1px solid rgba(168,85,247,.12)}
+.bc{background:#2e1065;border-radius:8px 8px 0 0;padding:8px 12px;display:flex;align-items:center;gap:8px}
+.bc-dots{display:flex;gap:4px}.bc-dots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15)}
+.bc-url{font-size:9px;font-family:'JetBrains Mono',monospace;color:#94a3b8;flex:1;background:rgba(0,0,0,.25);padding:2px 8px;border-radius:3px}
+.bb{background:#1a0533;border-radius:0 0 8px 8px;padding:12px;flex:1;border:1px solid rgba(168,85,247,.2);border-top:none}
+.mini-rows{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.mr{display:flex;align-items:center;gap:8px;font-size:9px}
+.mr span:first-child{flex:1;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrb{width:60px;height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.mrb div{height:100%;border-radius:2px}
+.mr span:last-child{font-size:10px;font-weight:700;width:24px}
+.section{margin-bottom:52px}
+.section>h2{font-size:22px;font-weight:700;color:#fff;margin:0 0 8px}
+.sub{font-size:13px;color:#64748b;line-height:1.6;margin:0 0 22px;max-width:700px}
+.sub code{background:rgba(168,85,247,.15);color:#c4b5fd;padding:1px 5px;border-radius:3px;font-family:'JetBrains Mono',monospace}
+.sub strong{color:#e2e8f0}
+.chartlab{display:grid;grid-template-columns:320px 1fr;gap:24px;background:#0d0018;border:1px solid rgba(168,85,247,.15);border-radius:14px;padding:24px}
+.cl-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-size:12px;font-weight:600;color:#94a3b8}
+.btn-sm{font-size:11px;padding:4px 10px;border-radius:5px;border:1px solid rgba(168,85,247,.3);background:transparent;color:#a855f7;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .12s}
+.btn-sm:hover{background:rgba(168,85,247,.1)}
+.cl-sliders{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.cl-row{display:flex;align-items:center;gap:8px}
+.cl-lbl{font-size:11px;color:#64748b;width:96px;flex-shrink:0}
+.cl-range{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:rgba(168,85,247,.15);outline:none}
+.cl-range::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--c,#a855f7);cursor:pointer;box-shadow:0 0 6px var(--c,#a855f7)}
+.cl-val{font-size:12px;font-weight:700;width:28px;text-align:right}
+.cl-types{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.ct-btn{font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.08);background:transparent;color:#64748b;cursor:pointer;transition:all .12s;font-family:'Outfit',sans-serif}
+.ct-btn.active{border-color:#a855f7;color:#a855f7;background:rgba(168,85,247,.08)}
+.cl-note{font-size:11px;color:#475569;line-height:1.5;padding:10px;background:rgba(168,85,247,.04);border-radius:8px;border:1px solid rgba(168,85,247,.1)}
+.cl-note code{background:rgba(168,85,247,.15);color:#c4b5fd;padding:1px 4px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px}
+.cl-note strong{color:#e2e8f0}
+.cl-right{display:flex;flex-direction:column}
+.cl-plabel{font-size:10px;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}
+.hb-demo{display:grid;grid-template-columns:280px 1fr;background:#0d0018;border:1px solid rgba(168,85,247,.15);border-radius:14px;overflow:hidden}
+.hbd-left{padding:20px;display:flex;flex-direction:column;gap:10px;border-right:1px solid rgba(168,85,247,.1)}
+.hbd-toggle{display:flex;align-items:flex-start;gap:10px;cursor:pointer}
+.hbd-toggle input{display:none}
+.track{width:34px;height:18px;border-radius:100px;background:#1e293b;position:relative;flex-shrink:0;transition:background .2s;margin-top:2px}
+.thumb{position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:white;transition:transform .2s}
+.hbd-toggle input:checked~.track{background:#a855f7}
+.hbd-toggle input:checked~.track .thumb{transform:translateX(16px)}
+.tt{display:block;font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:1px}
+.td{font-size:11px;color:#475569;line-height:1.3}
+.hbd-right{display:flex;flex-direction:column;background:#060a12}
+.hbd-header{display:flex;justify-content:space-between;padding:10px 16px;font-size:10px;color:#475569;border-bottom:1px solid rgba(168,85,247,.08)}
+.hbd-lang{color:#a855f7;font-weight:700}
+.hbd-pre{flex:1;margin:0;padding:16px;overflow:auto;min-height:200px}
+.hbd-pre code{font-family:'JetBrains Mono',monospace;font-size:10px;color:#c4b5fd;white-space:pre;line-height:1.6}
+.sw-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.sw-col{background:#0d0018;border-radius:12px;padding:24px}
+.sw-col.sw-purple{border-top:3px solid #a855f7}
+.sw-col.sw-yellow{border-top:3px solid #f59e0b}
+.sw-col h3{font-size:15px;font-weight:700;margin:0 0 16px}
+.sw-purple h3{color:#a855f7}
+.sw-yellow h3{color:#f59e0b}
+.sw-item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sw-item:last-child{border-bottom:none}
+.sw-t{font-size:12px;font-weight:600;color:#e2e8f0;margin-bottom:3px}
+.sw-d{font-size:11px;color:#64748b;line-height:1.5}
+.workspace{display:grid;grid-template-columns:340px 1fr;gap:20px}
+.ws-left,.ws-right{display:flex;flex-direction:column;gap:16px}
 </style>
