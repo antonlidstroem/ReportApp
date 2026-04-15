@@ -1,8 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ReportApp.AnalysisEngine.Models
 {
@@ -13,6 +10,12 @@ namespace ReportApp.AnalysisEngine.Models
         public string Category { get; set; } = string.Empty;
         public double AverageValue { get; set; }
         public int TotalResponses { get; set; }
-        public Dictionary<string, int>? Distribution { get; set; } // t.ex. "Antal 5:or", "Antal 4:or"
+        public Dictionary<string, int>? Distribution { get; set; }
+
+        /// <summary>
+        /// AverageValue expressed as a percentage of 5 (max), for progress-bar widths in templates.
+        /// e.g. 4.2 → 84
+        /// </summary>
+        public int AverageValue20Pct => (int)Math.Round(AverageValue * 20);
     }
 }

@@ -93,7 +93,7 @@
       <div class="preview-section">
         <div class="preview-controls">
           <div class="pc-header">Mall-väljare</div>
-          <button v-for="t in previewTemplates" :key="t.id" :class="['tmpl-btn', { active: activePreviewTmpl === t.id }]" @click="switchPreview(t.id)">
+          <button v-for="t in previewTemplates" :key="t.id" :class="['tmpl-btn', { active: activePreviewTmpl === t.id }]" @click="switchPreview(t.id as 'full' | 'executive')">
             {{ t.icon }} {{ t.name }}
           </button>
           <div class="preview-export-box">
@@ -178,18 +178,18 @@ import Chart from 'chart.js/auto'
 import { fetchSurveys, fetchQuestions, buildPreviewHtml, RICH_TEMPLATES } from '../../composables/useApi'
 
 // ── Seeded data ────────────────────────────────────────────────────────────
-const heroCanvas     = ref<HTMLCanvasElement>()
+const heroCanvas      = ref<HTMLCanvasElement>()
 const liveChartCanvas = ref<HTMLCanvasElement>()
-const previewFrame   = ref<HTMLIFrameElement>()
+const previewFrame    = ref<HTMLIFrameElement>()
 let   liveChart: Chart | null = null
 
 interface QRow { text: string; category: string; avg: number; responses: number }
 interface HeroData { title: string; company: string; questions: QRow[] }
 
 const heroData     = ref<HeroData | null>(null)
-const demoSurveyId = ref(1)  // Default to first survey
+const demoSurveyId = ref(1)
 
-// Slider rows (synced with live chart)
+// Slider rows
 const chartRows = ref([
   { label: 'Ledarskap',    value: 4.1 },
   { label: 'Psykosocialt', value: 3.2 },
@@ -200,11 +200,10 @@ const chartRows = ref([
 
 const sc = (v: number) => v >= 4 ? '#22c55e' : v >= 3 ? '#f59e0b' : '#ef4444'
 
-// Chart types
 const chartTypes = [
-  { id: 'bar',      icon: '📊', label: 'Stapel'  },
-  { id: 'line',     icon: '📈', label: 'Linje'   },
-  { id: 'radar',    icon: '🎯', label: 'Radar'   },
+  { id: 'bar',      icon: '📊', label: 'Stapel'   },
+  { id: 'line',     icon: '📈', label: 'Linje'    },
+  { id: 'radar',    icon: '🎯', label: 'Radar'    },
   { id: 'doughnut', icon: '🍩', label: 'Munkkaka' },
 ]
 const activeCT = ref('bar')
@@ -215,15 +214,20 @@ function randomize() {
   renderPreview()
 }
 
-function updateChart() {
-  if (!liveChart) return
-  liveChart.data.datasets[0].data = chartRows.value.map(r => r.value)
-  if (activeCT.value === 'bar') {
-    (liveChart.data.datasets[0] as { backgroundColor: string[] }).backgroundColor =
-      chartRows.value.map(r => sc(r.value) + 'cc')
+  function updateChart() {
+    if (!liveChart) return
+
+    const ds = liveChart.data.datasets[0] as any
+    if (!ds) return
+
+    ds.data = chartRows.value.map(r => r.value)
+
+    if (activeCT.value === 'bar') {
+      ds.backgroundColor = chartRows.value.map(r => sc(r.value) + 'cc')
+    }
+
+    liveChart.update('none')
   }
-  liveChart.update('none')
-}
 
 function rebuildChart() {
   if (!liveChartCanvas.value) return
@@ -248,19 +252,27 @@ function rebuildChart() {
     },
     options: {
       animation: { duration: 280 },
-      plugins: { legend: { display: isRound, labels: { color: '#94a3b8', font: { size: 10 } } } },
+      plugins: {
+        legend: {
+          display: isRound,
+          labels: { color: '#94a3b8', font: { size: 10 } }
+        }
+      },
       scales: activeCT.value === 'radar'
         ? { r: { min: 0, max: 5, ticks: { color: '#666', stepSize: 1, font: { size: 8 } }, grid: { color: '#2d1060' }, pointLabels: { color: '#94a3b8', font: { size: 9 } } } }
         : isRound ? {}
-        : { y: { min: 0, max: 5, ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#1e1e3f' } }, x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#1e1e3f' } } },
-    } as import('chart.js').ChartOptions,
+        : {
+            y: { min: 0, max: 5, ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#1e1e3f' } },
+            x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: '#1e1e3f' } }
+          },
+    },
   })
 }
 
-// ── Full template (for demo export) ─────────────────────────────────────────
+// ── Full template for demo export ──────────────────────────────────────────
 const fullTemplate = computed(() => RICH_TEMPLATES.jsreportFull)
 
-// ── Live preview ─────────────────────────────────────────────────────────────
+// ── Live preview ──────────────────────────────────────────────────────────
 const activePreviewTmpl = ref<'full' | 'executive'>('full')
 
 const previewTemplates = [
@@ -271,7 +283,7 @@ const previewTemplates = [
 const previewLabel = computed(() =>
   activePreviewTmpl.value === 'full'
     ? 'Handlebars-mall renderad av Chromium — inkluderar Chart.js stapeldiagram'
-    : 'Executive-mall med radarkarta per kategori — renderad av Chromium'
+    : 'Executive-mall med kategorimedelvärden — renderad av Chromium'
 )
 
 const activeRichTemplate = computed(() =>
@@ -301,12 +313,12 @@ function renderPreview() {
   })
 }
 
-// ── Handlebars demo ───────────────────────────────────────────────────────────
+// ── Handlebars demo ───────────────────────────────────────────────────────
 const hbToggles = ref([
-  { id: 'exec',  title: 'Executive-block', desc: 'KPI-rad med OverallAverage, QuestionCount', enabled: true },
-  { id: 'trend', title: 'Månadstrend (Chart.js)', desc: 'Linjediagram via Chromium JS-körning', enabled: true },
-  { id: 'high',  title: 'Markera låga poäng', desc: 'Röd rad när AverageValue < 3.0', enabled: false },
-  { id: 'cats',  title: 'Gruppera per kategori', desc: 'Sektionsrubriker, nästlad #each', enabled: false },
+  { id: 'exec',  title: 'Executive-block',           desc: 'KPI-rad med OverallAverage, QuestionCount',  enabled: true  },
+  { id: 'trend', title: 'Månadstrend (Chart.js)',    desc: 'Linjediagram via Chromium JS-körning',       enabled: true  },
+  { id: 'high',  title: 'Markera låga poäng',        desc: 'Röd rad när AverageValue < 3.0',             enabled: false },
+  { id: 'cats',  title: 'Gruppera per kategori',     desc: 'Sektionsrubriker, nästlad #each',            enabled: false },
 ])
 
 const generatedTemplate = computed(() => {
@@ -318,7 +330,9 @@ const generatedTemplate = computed(() => {
     L.push('</div>')
     L.push('')
   }
-  if (hbToggles.value.find(t => t.id === 'cats')?.enabled) L.push('{{#each CategoryGroups}}\n<h2>{{name}}</h2>')
+  if (hbToggles.value.find(t => t.id === 'cats')?.enabled)
+    L.push('{{#each CategoryGroups}}\n<h2>{{name}}</h2>')
+
   if (hbToggles.value.find(t => t.id === 'high')?.enabled) {
     L.push('{{#each QuestionSummaries}}')
     L.push('<div class="row {{#if (lt AverageValue 3)}}low{{/if}}">')
@@ -331,45 +345,46 @@ const generatedTemplate = computed(() => {
     L.push('  <b>{{AverageValue}}</b>')
     L.push('</div>\n{{/each}}')
   }
-  if (hbToggles.value.find(t => t.id === 'cats')?.enabled) L.push('{{/each}}')
+
+  if (hbToggles.value.find(t => t.id === 'cats')?.enabled)
+    L.push('{{/each}}')
+
   if (hbToggles.value.find(t => t.id === 'trend')?.enabled) {
     L.push('')
     L.push('<!-- Chart.js körs i Chromium -->')
     L.push('<canvas id="trend"></canvas>')
     L.push('<script>')
     L.push("  new Chart('trend', { type:'line', data: {")
-    L.push("    labels:[{{#each Trends}}'{{MonthName}}'{{/unless @last}},{{/unless}}{{/each}}],")
+    L.push("    labels:[{{#each Trends}}'{{MonthName}}'{{#unless @last}},{{/unless}}{{/each}}],")
     L.push('    datasets:[{data:[{{#each Trends}}{{AverageValue}},{{/each}}]}]')
     L.push('  }});\n<\\/script>')
   }
   return L.join('\n') || '<!-- Aktivera alternativ ovan -->'
 })
 
-// ── Strengths / weaknesses ────────────────────────────────────────────────────
-const strengths  = [
+// ── Strengths / weaknesses ────────────────────────────────────────────────
+const strengths = [
   { t: 'Chart.js i PDF — unikt',  d: 'Enda providern som kör JavaScript i Chromium och fångar det renderade diagrammet som PDF.' },
   { t: 'Designer-ägda mallar',    d: 'Hela layouten är HTML/CSS. Frontend-designers kan ändra rapporter utan att röra C#.' },
-  { t: 'Preview = PDF-utdata',   d: 'Rapporten ser exakt ut som din webbapp. Ingen diskrepans.' },
-  { t: 'Handlebars-logik',       d: 'Villkor, loopar och hjälpare direkt i mallen. Minskar backend-kod drastiskt.' },
+  { t: 'Preview = PDF-utdata',    d: 'Rapporten ser exakt ut som din webbapp. Ingen diskrepans.' },
+  { t: 'Handlebars-logik',        d: 'Villkor, loopar och hjälpare direkt i mallen. Minskar backend-kod drastiskt.' },
 ]
 const weaknesses = [
   { t: 'Chromium-process krävs', d: 'jsreport startar en Node.js-process som hanterar Chromium. ~200MB disk, 2–5s cold start.' },
   { t: 'Ingen native PowerPoint', d: 'jsreport saknar PPT-recept. Fallback till Syncfusion behövs.' },
   { t: 'Begränsad Excel-kvalitet', d: 'HTML-till-xlsx: inga formler, ingen villkorsstyrd formatering, inga native-diagram.' },
-  { t: 'Driftsättningskomplexitet', d: 'Chromiums Linux-biblioteksberoenden kan vara problematiska i minimala Docker-bilder.' },
+  { t: 'Driftsättningskomplexitet', d: "Chromiums Linux-biblioteksberoenden kan vara problematiska i minimala Docker-bilder." },
 ]
 
-// ── Lifecycle ─────────────────────────────────────────────────────────────────
+// ── Lifecycle ─────────────────────────────────────────────────────────────
 onMounted(async () => {
   try {
-    // Load real survey data from the seeded database
     const surveys = await fetchSurveys()
-    if (surveys.length > 0) {
-      const survey = surveys[0]
+    const survey = surveys[0]  // could be undefined if no surveys
+    if (survey) {
       demoSurveyId.value = survey.id
       const questions = await fetchQuestions(survey.id)
 
-      // Build preview data from real questions (take first 8 to keep it neat)
       const previewQs = questions.slice(0, 8).map(q => ({
         text: q.text,
         category: q.category,
@@ -377,26 +392,32 @@ onMounted(async () => {
         responses: Math.floor(15 + Math.random() * 30),
       }))
 
-      heroData.value = { title: survey.title, company: survey.companyName, questions: previewQs }
+      heroData.value = {
+        title: survey.title,
+        company: survey.companyName ?? '',
+        questions: previewQs,
+      }
 
       // Sync slider labels to real category names
       const cats = [...new Set(questions.map(q => q.category))].slice(0, 5)
-      cats.forEach((cat, i) => { if (chartRows.value[i]) chartRows.value[i].label = cat })
+      cats.forEach((cat, i) => {
+        if (chartRows.value[i]) chartRows.value[i].label = cat
+      })
     }
   } catch {
-    // Use default data if API is not available
+    // Fallback data when API is not available
     heroData.value = {
       title: 'Pulsmätning: Stress & Välmående',
       company: 'Storkommunen AB',
       questions: [
-        { text: 'Utvilad på morgonen?',       category: 'Hälsa',        avg: 3.1, responses: 24 },
-        { text: 'Återhämtningstid?',          category: 'Hälsa',        avg: 3.5, responses: 24 },
-        { text: 'Stress kring deadlines?',    category: 'Psykosocialt', avg: 4.2, responses: 23 },
-        { text: 'Stöd från närmaste chef?',   category: 'Ledarskap',    avg: 4.0, responses: 22 },
-        { text: 'Tydliga förväntningar?',     category: 'Ledarskap',    avg: 3.8, responses: 24 },
-        { text: 'Socialt stöd på jobbet?',    category: 'Psykosocialt', avg: 4.3, responses: 23 },
-        { text: 'Tillgång till resurser?',    category: 'Resurser',     avg: 3.6, responses: 24 },
-        { text: 'Balans arbete/fritid?',      category: 'Hälsa',        avg: 2.9, responses: 22 },
+        { text: 'Utvilad på morgonen?',     category: 'Hälsa',        avg: 3.1, responses: 24 },
+        { text: 'Återhämtningstid?',        category: 'Hälsa',        avg: 3.5, responses: 24 },
+        { text: 'Stress kring deadlines?',  category: 'Psykosocialt', avg: 4.2, responses: 23 },
+        { text: 'Stöd från närmaste chef?', category: 'Ledarskap',    avg: 4.0, responses: 22 },
+        { text: 'Tydliga förväntningar?',   category: 'Ledarskap',    avg: 3.8, responses: 24 },
+        { text: 'Socialt stöd på jobbet?',  category: 'Psykosocialt', avg: 4.3, responses: 23 },
+        { text: 'Tillgång till resurser?',  category: 'Resurser',     avg: 3.6, responses: 24 },
+        { text: 'Balans arbete/fritid?',    category: 'Hälsa',        avg: 2.9, responses: 22 },
       ],
     }
   }
@@ -408,13 +429,24 @@ onMounted(async () => {
       type: 'bar',
       data: {
         labels: qs.map((_, i) => `Q${i + 1}`),
-        datasets: [{ data: qs.map(q => q.avg), backgroundColor: qs.map(q => sc(q.avg) + 'aa'), borderColor: qs.map(q => sc(q.avg)), borderWidth: 2, borderRadius: 3 }],
+        datasets: [{
+          data: qs.map(q => q.avg),
+          backgroundColor: qs.map(q => sc(q.avg) + 'aa'),
+          borderColor: qs.map(q => sc(q.avg)),
+          borderWidth: 2,
+          borderRadius: 3,
+        }],
       },
-      options: { plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 5, ticks: { color: '#666', font: { size: 8 } }, grid: { color: '#1e1e2e' } }, x: { ticks: { color: '#666', font: { size: 8 } }, grid: { display: false } } } },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 5, ticks: { color: '#666', font: { size: 8 } }, grid: { color: '#1e1e2e' } },
+          x: { ticks: { color: '#666', font: { size: 8 } }, grid: { display: false } }
+        }
+      },
     })
   }
 
-  // Draw live chart
   setTimeout(rebuildChart, 80)
   setTimeout(renderPreview, 200)
 })
@@ -439,8 +471,8 @@ h1 { font-size: 54px; font-weight: 900; margin: 0 0 4px; color: #fff; letter-spa
 .hero-content > p { font-size: 14px; color: rgba(255,255,255,.55); max-width: 460px; line-height: 1.6; margin: 0 0 18px; }
 .verdicts { display: flex; flex-direction: column; gap: 5px; margin-bottom: 18px; }
 .verdict { font-size: 11px; padding: 5px 10px; border-radius: 5px; font-weight: 500; }
-.verdict.ok  { background: rgba(34,197,94,.07);  border: 1px solid rgba(34,197,94,.2);  color: #22c55e; }
-.verdict.warn{ background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); color: #f59e0b; }
+.verdict.ok   { background: rgba(34,197,94,.07);  border: 1px solid rgba(34,197,94,.2);  color: #22c55e; }
+.verdict.warn { background: rgba(245,158,11,.07); border: 1px solid rgba(245,158,11,.2); color: #f59e0b; }
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .b { font-size: 10px; padding: 3px 10px; border-radius: 100px; border: 1px solid; font-weight: 500; }
 .b.purple { color: #a855f7; border-color: rgba(168,85,247,.3); background: rgba(168,85,247,.06); }
@@ -483,8 +515,6 @@ h1 { font-size: 54px; font-weight: 900; margin: 0 0 4px; color: #fff; letter-spa
 .dc-chart-types { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 .ct-btn { font-size: 11px; padding: 5px 9px; border-radius: 6px; border: 1px solid rgba(255,255,255,.08); background: transparent; color: #64748b; cursor: pointer; transition: all .12s; font-family: 'Outfit', sans-serif; }
 .ct-btn.active { border-color: #a855f7; color: #a855f7; background: rgba(168,85,247,.08); }
-
-/* Export box in demo */
 .demo-export-box { background: rgba(168,85,247,.06); border: 1px solid rgba(168,85,247,.2); border-radius: 10px; padding: 14px; }
 .deb-title { font-size: 12px; font-weight: 700; color: #c4b5fd; margin-bottom: 4px; }
 .deb-note  { font-size: 11px; color: #475569; margin-bottom: 12px; line-height: 1.4; }
@@ -498,11 +528,9 @@ h1 { font-size: 54px; font-weight: 900; margin: 0 0 4px; color: #fff; letter-spa
 .tmpl-btn { font-size: 12px; padding: 9px 14px; border-radius: 8px; border: 1px solid rgba(168,85,247,.2); background: transparent; color: #64748b; cursor: pointer; text-align: left; transition: all .12s; font-family: 'Outfit', sans-serif; }
 .tmpl-btn.active { border-color: #a855f7; color: #e2e8f0; background: rgba(168,85,247,.08); }
 .tmpl-btn:hover:not(.active) { border-color: rgba(168,85,247,.3); color: #94a3b8; }
-
 .preview-export-box { background: rgba(168,85,247,.06); border: 1px solid rgba(168,85,247,.15); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
 .peb-title { font-size: 12px; font-weight: 700; color: #c4b5fd; }
 .peb-note  { font-size: 11px; color: #475569; line-height: 1.4; }
-
 .preview-frame-wrap { display: flex; flex-direction: column; background: #f8fafc; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); }
 .preview-label { font-size: 10px; color: #475569; padding: 8px 14px; background: #1a0533; border-bottom: 1px solid rgba(168,85,247,.15); }
 .preview-iframe { width: 100%; height: 520px; border: none; }

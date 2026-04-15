@@ -1,7 +1,6 @@
 using jsreport.AspNetCore;
 using jsreport.Binary;
 using jsreport.Local;
-using jsreport.Shared;
 using ReportApp.AnalysisEngine.Services;
 using ReportApp.Backend.Providers;
 using ReportApp.Core.Data;
@@ -10,8 +9,16 @@ using ReportApp.WebAPI.Providers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Services ──────────────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+// ── Services ───────────────────────────────────────────────────────────────
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Ensure camelCase serialization for all response objects
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -22,40 +29,53 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ReportDbContext>();
 builder.Services.AddScoped<AnalysisService>();
 
-// Skapa temp-mapp för jsreport
+// ── jsreport ──────────────────────────────────────────────────────────────
 var jsreportTempDir = Path.Combine(Path.GetTempPath(), "reportapp_jsreport");
 if (!Directory.Exists(jsreportTempDir)) Directory.CreateDirectory(jsreportTempDir);
 
-// Program.cs - Runt rad 20-30
 builder.Services.AddJsReport(new LocalReporting()
-    .UseBinary(jsreport.Binary.JsReportBinary.GetBinary())
+    .UseBinary(JsReportBinary.GetBinary())
     .KillRunningJsReportProcesses()
     .TempDirectory(jsreportTempDir)
-    .AsWebServer() // ÄNDRA FRÅN AsUtility() TILL AsWebServer()
+    .AsWebServer()
+    .Configure(cfg =>
+    {
+        // Register Handlebars helpers used in templates: gt, lt, unless
+        cfg.Handlebars = new jsreport.Types.HandlebarsConfiguration
+        {
+            Helpers = new Dictionary<string, object>()
+        };
+        return cfg;
+    })
     .Create());
 
-
-
-// 1. Register the License (Get this from Syncfusion dashboard)
+// ── Syncfusion license ────────────────────────────────────────────────────
 var syncfusionKey = builder.Configuration["Syncfusion:LicenseKey"];
-Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
+if (!string.IsNullOrWhiteSpace(syncfusionKey))
+{
+    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
+}
 
-// 2. Register the Provider
+// ── Report Providers ──────────────────────────────────────────────────────
+// IMPORTANT: Registration order matters — the first matching provider is used
+// when multiple providers share the same Name. Each provider has a unique Name.
+
+// Syncfusion (pure .NET — PDF, Excel, PPT)
 builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();
 
-// ── Report Providers ──────────────────────────────────────────────────────────
-// Activate the providers you have installed.
-// Each can be toggled independently.
-
-builder.Services.AddSingleton<PlaywrightProvider>();
-// builder.Services.AddScoped<IReportProvider, IronSuiteProvider>();
+// jsreport (HTML→PDF via Chromium + Handlebars; Excel via jsreport html-to-xlsx; PPT via Syncfusion)
 builder.Services.AddScoped<IReportProvider, JsReportProvider>();
-builder.Services.AddScoped<IReportProvider, JsSyncHybridProvider>(); // Om du skapat denna
+
+// Hybrid A: jsreport PDF + Syncfusion Excel/PPT
+builder.Services.AddScoped<IReportProvider, JsSyncHybridProvider>();
+
+// Playwright singleton (browser kept alive across requests)
+builder.Services.AddSingleton<PlaywrightProvider>();
+
+// Hybrid B: Playwright PDF + Syncfusion Excel/PPT
 builder.Services.AddScoped<IReportProvider, PlaySyncHybridProvider>();
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
-// Read allowed origins from config so you don't have to touch code for port changes.
-// In appsettings.Development.json add: "AllowedOrigins": ["http://localhost:5173"]
+// ── CORS ──────────────────────────────────────────────────────────────────
 var allowedOrigins = builder.Configuration
     .GetSection("AllowedOrigins")
     .Get<string[]>()
@@ -70,7 +90,7 @@ builder.Services.AddCors(options =>
               .WithExposedHeaders("X-Generation-Time-Ms", "X-File-Size-Bytes"));
 });
 
-// ── Build ─────────────────────────────────────────────────────────────────────
+// ── Build ──────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
 // Seed database (guarded — only runs if empty)
