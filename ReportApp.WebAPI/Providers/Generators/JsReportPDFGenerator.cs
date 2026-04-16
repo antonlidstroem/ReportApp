@@ -54,7 +54,7 @@ function eq(a, b) { return a == b; }
                     MarginBottom = "1cm",
                     MarginLeft = "1cm",
                     MarginRight = "1cm",
-                    WaitForNetworkIdle = true
+                    //WaitForNetworkIdle = true
                 }
             },
             Data = data

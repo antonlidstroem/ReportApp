@@ -21,9 +21,9 @@ public class AnalysisService
     {
         var surveyInfo = await _context.Surveys
             .Where(s => s.Id == surveyId)
-            .Select(s => new { s.Title, CompanyName = s.Company!.Name })
+            .Select(s => new { s.Title, CompanyName = s.Company != null ? s.Company.Name : string.Empty })
             .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException($"Survey with id={surveyId} not found");
+            ?? throw new KeyNotFoundException($"Survey with id={surveyId} not found.");
 
         var model = new ReportDataViewModel
         {
@@ -34,16 +34,13 @@ public class AnalysisService
             EndDate = end
         };
 
-        // Build the questions query
         var questionsQuery = _context.Questions
             .Where(q => q.SurveyId == surveyId);
 
-        if (questionIds != null && questionIds.Any())
-        {
+        if (questionIds != null && questionIds.Count > 0)
             questionsQuery = questionsQuery.Where(q => questionIds.Contains(q.Id));
-        }
 
-        // Aggregate question data in the database
+        // Aggregate in DB; round in memory (Math.Round not translatable by SQLite EF provider)
         model.QuestionSummaries = await questionsQuery
             .Select(q => new QuestionSummary
             {
@@ -53,29 +50,26 @@ public class AnalysisService
                 TotalResponses = q.Responses.Count(r =>
                     (!start.HasValue || r.SubmittedAt >= start.Value) &&
                     (!end.HasValue || r.SubmittedAt <= end.Value)),
-                // Use nullable average to avoid exception on empty set
                 AverageValue = q.Responses
                     .Where(r => (!start.HasValue || r.SubmittedAt >= start.Value) &&
                                 (!end.HasValue || r.SubmittedAt <= end.Value))
-                    .Average(r => (double?)r.Value) ?? 0,
+                    .Average(r => (double?)r.Value) ?? 0.0,
             })
             .ToListAsync();
 
-        // Round after fetching (Math.Round not supported in SQLite EF translation)
-        model.QuestionSummaries.ForEach(q =>
-            q.AverageValue = Math.Round(q.AverageValue, 2));
+        // Round after fetch — SQLite EF cannot translate Math.Round inside a projection
+        model.QuestionSummaries.ForEach(q => q.AverageValue = Math.Round(q.AverageValue, 2));
 
-        // Trend: fetch raw then group in memory — avoids SQLite LINQ translation issues
-        // with DateTime.Year/Month extraction + Math.Round in the same query
-        var trendResponses = await _context.Responses
+        // Fetch trend rows as primitives then group in memory to avoid SQLite DateTime.Year/Month issues
+        var trendRaw = await _context.Responses
             .Where(r => r.Question.SurveyId == surveyId &&
                         (!start.HasValue || r.SubmittedAt >= start.Value) &&
                         (!end.HasValue || r.SubmittedAt <= end.Value) &&
-                        (questionIds == null || !questionIds.Any() || questionIds.Contains(r.QuestionId)))
+                        (questionIds == null || questionIds.Count == 0 || questionIds.Contains(r.QuestionId)))
             .Select(r => new { r.SubmittedAt.Year, r.SubmittedAt.Month, r.Value })
             .ToListAsync();
 
-        model.Trends = trendResponses
+        model.Trends = trendRaw
             .GroupBy(r => new { r.Year, r.Month })
             .Select(g => new MonthlyTrend
             {
@@ -84,16 +78,16 @@ public class AnalysisService
                 MonthName = GetMonthName(g.Key.Month),
                 AverageValue = Math.Round(g.Average(r => r.Value), 2)
             })
-            .OrderBy(t => t.Year)
-            .ThenBy(t => t.Month)
+            .OrderBy(t => t.Year).ThenBy(t => t.Month)
             .ToList();
 
         return model;
     }
 
     /// <summary>
-    /// Returns all surveys with id, title, companyName and questionCount.
-    /// The companyName field is required by the Vue frontend Survey interface.
+    /// Returns surveys with id, title, companyName and questionCount.
+    /// Uses explicit lowercase property names to guarantee camelCase JSON output
+    /// regardless of the JsonNamingPolicy configuration.
     /// </summary>
     public async Task<object> GetAllSurveysAsync()
     {

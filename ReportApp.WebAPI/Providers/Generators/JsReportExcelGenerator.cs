@@ -44,12 +44,12 @@ public class JsReportExcelGenerator
                 Content = template,
                 Engine = Engine.Handlebars,
                 Recipe = Recipe.HtmlToXlsx,
-                HtmlToXlsx = new HtmlToXlsx
-                {
-                    SheetName = data.SurveyTitle.Length > 31
-                        ? data.SurveyTitle[..31]
-                        : data.SurveyTitle
-                }
+                //HtmlToXlsx = new HtmlToXlsx
+                //{
+                //    SheetName = data.SurveyTitle.Length > 31
+                //        ? data.SurveyTitle[..31]
+                //        : data.SurveyTitle
+                //}
             },
             Data = data
         });
