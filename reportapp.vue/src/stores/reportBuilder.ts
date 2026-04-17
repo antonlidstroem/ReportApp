@@ -15,6 +15,7 @@ export interface ReportModule {
 export interface Survey {
   id: number
   title: string
+  companyName: string  // FIXED: was missing, caused undefined in JsReportView
   questionCount: number
 }
 
@@ -27,11 +28,11 @@ export interface Question {
 }
 
 const DEFAULT_MODULES: ReportModule[] = [
-  { id: 'summary',       type: 'summary',       label: 'Sammanfattning',     enabled: true,  order: 0, config: {} },
-  { id: 'questionTable', type: 'questionTable',  label: 'Frågetabell',        enabled: true,  order: 1, config: { showDistribution: false } },
-  { id: 'trend',         type: 'trend',          label: 'Månadsvis trend',    enabled: true,  order: 2, config: {} },
-  { id: 'category',      type: 'category',       label: 'Kategorianalys',     enabled: true,  order: 3, config: {} },
-  { id: 'rawData',       type: 'rawData',         label: 'Rådata (stresstest)',enabled: false, order: 4, config: {} },
+  { id: 'summary',       type: 'summary',       label: 'Titelsida & KPI',     enabled: true,  order: 0, config: { colorScheme: 'corporate', showKpiStrip: true } },
+  { id: 'questionTable', type: 'questionTable',  label: 'Frågetabell',         enabled: true,  order: 1, config: { showDistribution: false, showProgressBars: true, groupByCategory: false, sortBy: 'original' } },
+  { id: 'trend',         type: 'trend',          label: 'Månadsvis trend',     enabled: true,  order: 2, config: { chartType: 'line', showDataPoints: true, fillArea: true } },
+  { id: 'category',      type: 'category',       label: 'Kategorianalys',      enabled: true,  order: 3, config: { chartType: 'bar', showQuestionCount: true } },
+  { id: 'rawData',       type: 'rawData',        label: 'Rådata (stresstest)', enabled: false, order: 4, config: { includeComments: false, anonymize: false } },
 ]
 
 export const useReportBuilderStore = defineStore('reportBuilder', () => {
@@ -39,16 +40,13 @@ export const useReportBuilderStore = defineStore('reportBuilder', () => {
   const surveys      = ref<Survey[]>([])
   const questions    = ref<Question[]>([])
   const selectedIds  = ref<Set<number>>(new Set())
-  const modules      = ref<ReportModule[]>(DEFAULT_MODULES.map(m => ({ ...m })))
+  const modules      = ref<ReportModule[]>(DEFAULT_MODULES.map(m => ({ ...m, config: { ...m.config } })))
   const dateStart    = ref<string>('')
   const dateEnd      = ref<string>('')
   const templateHtml = ref<string>('')
 
-  // Sorted enabled modules
   const activeModules = computed(() =>
-    modules.value
-      .filter(m => m.enabled)
-      .sort((a, b) => a.order - b.order)
+    modules.value.filter(m => m.enabled).sort((a, b) => a.order - b.order)
   )
 
   const selectedQuestionIds = computed(() => Array.from(selectedIds.value))
@@ -79,7 +77,7 @@ export const useReportBuilderStore = defineStore('reportBuilder', () => {
 
   function moveModule(id: string, direction: 'up' | 'down') {
     const sorted = [...modules.value].sort((a, b) => a.order - b.order)
-    const idx = sorted.findIndex(m => m.id === id)
+    const idx    = sorted.findIndex(m => m.id === id)
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     if (swapIdx < 0 || swapIdx >= sorted.length) return
     const tmp = sorted[idx].order
@@ -93,7 +91,7 @@ export const useReportBuilderStore = defineStore('reportBuilder', () => {
   }
 
   function resetModules() {
-    modules.value = DEFAULT_MODULES.map(m => ({ ...m }))
+    modules.value = DEFAULT_MODULES.map(m => ({ ...m, config: { ...m.config } }))
   }
 
   return {
@@ -101,6 +99,6 @@ export const useReportBuilderStore = defineStore('reportBuilder', () => {
     dateStart, dateEnd, templateHtml,
     activeModules, selectedQuestionIds,
     setSurvey, toggleQuestion, selectAllQuestions, clearSelection,
-    toggleModule, moveModule, updateModuleConfig, resetModules
+    toggleModule, moveModule, updateModuleConfig, resetModules,
   }
 })
