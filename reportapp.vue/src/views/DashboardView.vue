@@ -20,13 +20,11 @@
     <section class="section">
       <h2 class="section-title">Technical Tracks</h2>
       <div class="provider-grid">
-        <router-link
-          v-for="p in providers"
-          :key="p.route"
-          :to="p.route"
-          class="pcard"
-          :style="`--c:${p.color}`"
-        >
+        <router-link v-for="p in providers"
+                     :key="p.route"
+                     :to="p.route"
+                     class="pcard"
+                     :style="`--c:${p.color}`">
           <div class="pcard-top">
             <span class="pcard-icon">{{ p.icon }}</span>
             <span class="pcard-track">Track {{ p.track }}</span>
@@ -96,6 +94,25 @@
           <div class="rc-title" :style="`color:${p.color}`">{{ p.icon }} {{ p.shortName }}</div>
           <canvas :ref="(el) => (radarRefs[p.shortName] = el as HTMLCanvasElement)" height="200"></canvas>
         </div>
+      </div>
+    </section>
+
+    <!--STRESSTEST-->
+    <section class="section">
+      <h2 class="section-title">⚡ Live Performance Stress Test</h2>
+      <div class="stress-test-wrapper">
+        <div class="stress-controls">
+          <button v-for="p in providers"
+                  :key="p.id"
+                  :class="['st-btn', { active: activeStressProvider === p.id }]"
+                  :style="activeStressProvider === p.id ? `--c:${p.color}` : ''"
+                  @click="activeStressProvider = p.id">
+            {{ p.icon }} {{ p.shortName }}
+          </button>
+        </div>
+
+        <StressTestPanel :provider="activeStressProvider"
+                         :provider-color="providers.find(p => p.id === activeStressProvider)?.color || '#6366f1'" />
       </div>
     </section>
 
@@ -174,14 +191,16 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useBenchmarkStore } from '../stores/benchmarks'
 import { fetchSurveys } from '../composables/useApi'
 import { useReportBuilderStore } from '../stores/reportBuilder'
-import Chart from 'chart.js/auto'
+  import Chart from 'chart.js/auto'
+  import StressTestPanel from '../components/StressTestPanel.vue'
 
 const benchmarks = useBenchmarkStore()
 const store = useReportBuilderStore()
 const radarRefs = ref<Record<string, HTMLCanvasElement>>({})
 const benchBarRef = ref<HTMLCanvasElement>()
 let benchBarChart: Chart | null = null
-const activeFilter = ref('all')
+  const activeFilter = ref('all')
+  const activeStressProvider = ref('jsreport')
 
 const meta = [
   { val: '4', label: 'Providers' },
@@ -192,6 +211,7 @@ const meta = [
 
 const providers = [
   {
+    id: 'jsreport',
     route: '/providers/jsreport', track: 1, icon: '🌐',
     name: 'jsreport', shortName: 'jsreport',
     description: 'HTML + CSS + JavaScript → PDF. The only provider with real Chart.js charts in exported PDFs.',
@@ -201,6 +221,7 @@ const providers = [
     scores: [{ l: 'PDF Quality', v: 10 }, { l: 'Excel', v: 4 }, { l: 'Performance', v: 6 }],
   },
   {
+    id: 'Syncfusion',
     route: '/providers/syncfusion', track: 2, icon: '💎',
     name: 'Syncfusion', shortName: 'Syncfusion',
     description: 'Native Office engine. Live Excel formulas, editable PPT charts, AES-256 encryption, PDF/UA.',
@@ -210,6 +231,7 @@ const providers = [
     scores: [{ l: 'Excel', v: 10 }, { l: 'PPT', v: 9 }, { l: 'Performance', v: 9 }],
   },
   {
+    id: 'js-sync',
     route: '/providers/js-sync', track: 3, icon: '⚒️',
     name: 'jsreport + Syncfusion', shortName: 'Hybrid A',
     description: 'jsreport handles PDF (HTML templates, Chart.js). Syncfusion handles Excel and PPT (native quality).',
@@ -219,6 +241,7 @@ const providers = [
     scores: [{ l: 'PDF', v: 10 }, { l: 'Excel', v: 10 }, { l: 'Performance', v: 7 }],
   },
   {
+    id: 'play-sync',
     route: '/providers/play-sync', track: 4, icon: '🎭',
     name: 'Playwright + Syncfusion', shortName: 'Hybrid B',
     description: 'Playwright replaces jsreport for PDF — faster cold start, zero extra Node.js runtime. Syncfusion handles Office.',
@@ -469,4 +492,30 @@ h1 { font-size: 52px; font-weight: 800; letter-spacing: -2px; margin: 0 0 14px; 
 .sc-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .sc-btn { padding: 9px 18px; background: color-mix(in srgb,var(--c) 12%,transparent); color: var(--c); border: 1px solid color-mix(in srgb,var(--c) 28%,transparent); border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; transition: all 0.15s; }
 .sc-btn:hover { background: var(--c); color: white; }
+
+
+  .stress-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .st-btn {
+    background: #050d1f;
+    border: 1px solid #1e293b;
+    color: #64748b;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+
+    .st-btn.active {
+      border-color: var(--c);
+      color: var(--c);
+      background: color-mix(in srgb, var(--c) 10%, transparent);
+    }
+
 </style>
