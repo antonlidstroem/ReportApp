@@ -12,7 +12,6 @@ public class ReportDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder options)
     {
-        // Vi lägger databasen i projektmappen för enkelhetens skull i denna PoC
         options.UseSqlite("Data Source=reports_poc.db");
     }
 }

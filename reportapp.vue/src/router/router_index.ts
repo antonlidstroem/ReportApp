@@ -1,3 +1,5 @@
+// src/router/index.ts
+// Drop-in replacement — all four provider routes wired up
 import { createRouter, createWebHistory } from "vue-router";
 import DashboardView from "../views/DashboardView.vue";
 import JsReportView from "../views/providers/JsReportView.vue";
@@ -9,9 +11,18 @@ const router = createRouter({
     { path: "/", component: DashboardView },
     { path: "/providers/jsreport", component: JsReportView },
     { path: "/providers/syncfusion", component: SyncfusionView },
-    { path: "/providers/js-sync", component: () => import("../views/providers/CompositeJsSyncView.vue") },
-    { path: "/providers/play-sync", component: () => import("../views/providers/CompositePlaywrightSyncView.vue") },
+    {
+      path: "/providers/js-sync",
+      component: () => import("../views/providers/CompositeJsSyncView.vue"),
+    },
+    {
+      path: "/providers/play-sync",
+      component: () => import("../views/providers/CompositePlaywrightSyncView.vue"),
+    },
   ],
+  scrollBehavior() {
+    return { top: 0 };
+  },
 });
 
 export default router;

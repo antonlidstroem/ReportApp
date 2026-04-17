@@ -1,76 +1,80 @@
 using jsreport.AspNetCore;
 using jsreport.Binary;
 using jsreport.Local;
-using jsreport.Shared;
 using ReportApp.AnalysisEngine.Services;
+using ReportApp.Backend.Providers;
 using ReportApp.Core.Data;
 using ReportApp.WebAPI.Interfaces;
 using ReportApp.WebAPI.Providers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Services ──────────────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+// ── JSON / Controllers ────────────────────────────────────────────────────
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Force camelCase for all serialized objects including anonymous types
+        options.JsonSerializerOptions.PropertyNamingPolicy =
+            System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new() { Title = "ReportApp PoC API", Version = "v1" });
-});
+    c.SwaggerDoc("v1", new() { Title = "ReportApp PoC API", Version = "v1" }));
 
-// Database & analysis
+// ── Database & Analysis ───────────────────────────────────────────────────
 builder.Services.AddDbContext<ReportDbContext>();
 builder.Services.AddScoped<AnalysisService>();
 
-// Skapa temp-mapp för jsreport
+// ── jsreport ──────────────────────────────────────────────────────────────
+// jsreport needs a writable temp directory; do NOT use the app directory.
 var jsreportTempDir = Path.Combine(Path.GetTempPath(), "reportapp_jsreport");
-if (!Directory.Exists(jsreportTempDir)) Directory.CreateDirectory(jsreportTempDir);
+Directory.CreateDirectory(jsreportTempDir); // no-op if already exists
 
-// Program.cs - Runt rad 20-30
 builder.Services.AddJsReport(new LocalReporting()
-    .UseBinary(jsreport.Binary.JsReportBinary.GetBinary())
+    .UseBinary(JsReportBinary.GetBinary())
     .KillRunningJsReportProcesses()
     .TempDirectory(jsreportTempDir)
-    .AsWebServer() // ÄNDRA FRÅN AsUtility() TILL AsWebServer()
+    .AsWebServer()   // keeps the process alive — faster after first call
     .Create());
 
-
-
-// 1. Register the License (Get this from Syncfusion dashboard)
+// ── Syncfusion license ────────────────────────────────────────────────────
+// Add your key to appsettings.json: { "Syncfusion": { "LicenseKey": "YOUR_KEY" } }
+// Community edition (free under $1M revenue) does not require a key but will
+// show a pop-up warning in Office apps. Register key to suppress it.
 var syncfusionKey = builder.Configuration["Syncfusion:LicenseKey"];
-Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
+if (!string.IsNullOrWhiteSpace(syncfusionKey))
+    Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
 
-// 2. Register the Provider
-builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();
+// ── Report Providers ──────────────────────────────────────────────────────
+// All providers implement IReportProvider; the controller finds them by Name.
 
-// ── Report Providers ──────────────────────────────────────────────────────────
-// Activate the providers you have installed.
-// Each can be toggled independently.
+builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();   // "Syncfusion"
+builder.Services.AddScoped<IReportProvider, JsReportProvider>();      // "jsreport"
+builder.Services.AddScoped<IReportProvider, JsSyncHybridProvider>();  // "js-sync"
 
-builder.Services.AddScoped<IReportProvider, QuestOpenSourceProvider>();
-// builder.Services.AddScoped<IReportProvider, IronSuiteProvider>();
-builder.Services.AddScoped<IReportProvider, JsReportProvider>();
+// PlaywrightProvider holds a long-lived IBrowser — must be Singleton
+builder.Services.AddSingleton<PlaywrightProvider>();
+builder.Services.AddScoped<IReportProvider, PlaySyncHybridProvider>(); // "play-sync"
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
-// Read allowed origins from config so you don't have to touch code for port changes.
-// In appsettings.Development.json add: "AllowedOrigins": ["http://localhost:5173"]
+// ── CORS ──────────────────────────────────────────────────────────────────
 var allowedOrigins = builder.Configuration
     .GetSection("AllowedOrigins")
     .Get<string[]>()
     ?? ["http://localhost:5173", "http://localhost:61704"];
 
 builder.Services.AddCors(options =>
-{
     options.AddPolicy("VuePolicy", policy =>
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .WithExposedHeaders("X-Generation-Time-Ms", "X-File-Size-Bytes"));
-});
+              .WithExposedHeaders("X-Generation-Time-Ms", "X-File-Size-Bytes")));
 
-// ── Build ─────────────────────────────────────────────────────────────────────
+// ── Build ──────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-// Seed database (guarded — only runs if empty)
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ReportDbContext>();
@@ -83,7 +87,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Order matters: CORS before routing
+// CORS must come before UseRouting / MapControllers
 app.UseCors("VuePolicy");
 app.UseAuthorization();
 app.MapControllers();

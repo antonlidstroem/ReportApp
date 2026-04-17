@@ -70,75 +70,70 @@ public class ReportsController : ControllerBase
         [FromQuery] string? questionIds,
         [FromBody] ExportRequest? body)
     {
-        // 1. Hitta provider
+        // 1. Find provider (case-insensitive)
         var provider = _providers.FirstOrDefault(p =>
-            p.Name.Equals(providerName, StringComparison.OrdinalIgnoreCase));
+            string.Equals(p.Name, providerName, StringComparison.OrdinalIgnoreCase));
 
-        if (provider == null) return NotFound($"Provider '{providerName}' hittades inte.");
+        if (provider == null)
+            return NotFound($"Provider '{providerName}' not found. Available: {string.Join(", ", _providers.Select(p => p.Name))}");
 
-        // 2. Hämta data
+        // 2. Fetch data
         var ids = ParseIds(questionIds);
-        var data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end, ids);
+        ReportDataViewModel data;
+        try
+        {
+            data = await _analysisService.GetSurveyAnalysisAsync(surveyId, start, end, ids);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ex.Message);
+        }
 
         byte[] fileBytes;
         var sw = Stopwatch.StartNew();
 
         try
         {
-            // 3. Generera fil
-            // 3. Generera fil
-            fileBytes = format.ToLower() switch
+            // 3. Generate file
+            fileBytes = format.ToLowerInvariant() switch
             {
-                // Vi lägger till en kontroll för "string" och använder IsNullOrWhiteSpace för säkerhet
-                "pdf" when !string.IsNullOrWhiteSpace(body?.HtmlTemplate)
-                           && body.HtmlTemplate != "string"
+                "pdf" when body?.HtmlTemplate is { Length: > 0 } tmpl
+                           && tmpl != "string"
                            && provider is ISupportHtmlTemplate tp
-                    => await tp.GeneratePdfFromTemplateAsync(data, body.HtmlTemplate),
+                    => await tp.GeneratePdfFromTemplateAsync(data, tmpl),
 
                 "pdf" => await provider.GeneratePdfAsync(data),
                 "excel" or "xlsx" => await provider.GenerateExcelAsync(data),
                 "ppt" or "pptx" => await provider.GeneratePptAsync(data),
-                _ => throw new ArgumentException("Ogiltigt format.")
+                _ => throw new ArgumentException($"Invalid format: '{format}'. Supported: pdf, excel, xlsx, ppt, pptx")
             };
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
-            return BadRequest($"Fel vid generering ({providerName}): {ex.Message}");
+            return BadRequest($"Error generating {format.ToUpper()} with provider '{providerName}': {ex.Message}");
         }
 
         sw.Stop();
 
-        // 4. Bestäm exakt ContentType och Filändelse (HÄR VAR FELET INNAN)
-        string contentType;
-        string fileExtension;
-
-        switch (format.ToLower())
+        // 4. Determine content type and extension
+        var (contentType, fileExtension) = format.ToLowerInvariant() switch
         {
-            case "pdf":
-                contentType = "application/pdf";
-                fileExtension = "pdf";
-                break;
-            case "excel":
-            case "xlsx":
-                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                fileExtension = "xlsx";
-                break;
-            case "ppt":
-            case "pptx":
-                contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-                fileExtension = "pptx";
-                break;
-            default:
-                contentType = "application/octet-stream";
-                fileExtension = "bin";
-                break;
-        }
+            "pdf" => ("application/pdf", "pdf"),
+            "excel" or "xlsx" => ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"),
+            "ppt" or "pptx" => ("application/vnd.openxmlformats-officedocument.presentationml.presentation", "pptx"),
+            _ => ("application/octet-stream", "bin")
+        };
 
+        // 5. Add timing headers (these must be set before File() is called)
         Response.Headers.Append("X-Generation-Time-Ms", sw.ElapsedMilliseconds.ToString());
-        Response.Headers.Append("Access-Control-Expose-Headers", "X-Generation-Time-Ms");
+        Response.Headers.Append("X-File-Size-Bytes", fileBytes.Length.ToString());
+        // Access-Control-Expose-Headers is handled by the CORS policy (WithExposedHeaders)
 
-        // 5. Returnera filen med garanterat rätt ändelse
-        var fileName = $"Rapport_{providerName}_{DateTime.Now:yyyyMMdd}.{fileExtension}";
+        var fileName = $"Rapport_{providerName}_{DateTime.Now:yyyyMMdd_HHmmss}.{fileExtension}";
         return File(fileBytes, contentType, fileName);
     }
 
@@ -148,10 +143,10 @@ public class ReportsController : ControllerBase
             return null;
 
         var ids = raw.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                  .Select(s => int.TryParse(s.Trim(), out var id) ? id : -1)
-                  .Where(id => id > 0)
-                  .ToList();
+                     .Select(s => int.TryParse(s.Trim(), out var id) ? id : -1)
+                     .Where(id => id > 0)
+                     .ToList();
 
-        return ids.Any() ? ids : null; // Om listan är tom, returnera null (hämta alla)
+        return ids.Count > 0 ? ids : null;
     }
 }
