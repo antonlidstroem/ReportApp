@@ -214,20 +214,18 @@ function randomize() {
   renderPreview()
 }
 
-  function updateChart() {
-    if (!liveChart) return
-
-    const ds = liveChart.data.datasets[0] as any
-    if (!ds) return
-
-    ds.data = chartRows.value.map(r => r.value)
-
-    if (activeCT.value === 'bar') {
-      ds.backgroundColor = chartRows.value.map(r => sc(r.value) + 'cc')
-    }
-
-    liveChart.update('none')
+function updateChart() {
+  if (!liveChart) return
+  const ds = liveChart.data.datasets[0]
+  if (!ds) return
+  // Use any to avoid complex Chart.js generic casting
+  ;(ds as { data: number[] }).data = chartRows.value.map(r => r.value)
+  if (activeCT.value === 'bar') {
+    ;(ds as { backgroundColor: string[] }).backgroundColor =
+      chartRows.value.map(r => sc(r.value) + 'cc')
   }
+  liveChart.update('none')
+}
 
 function rebuildChart() {
   if (!liveChartCanvas.value) return

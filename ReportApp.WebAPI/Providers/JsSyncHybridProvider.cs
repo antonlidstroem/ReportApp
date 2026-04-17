@@ -1,7 +1,7 @@
-﻿using ReportApp.AnalysisEngine.Models;
+using jsreport.Shared;
+using ReportApp.AnalysisEngine.Models;
 using ReportApp.WebAPI.Interfaces;
 using ReportApp.WebAPI.Providers.Generators;
-using jsreport.Shared;
 
 namespace ReportApp.WebAPI.Providers;
 
@@ -13,12 +13,12 @@ public class JsSyncHybridProvider : IReportProvider, ISupportHtmlTemplate
 
     public JsSyncHybridProvider(IRenderService jsreport)
     {
-        _pdf = new JsReportPdfGenerator(jsreport);
+        _pdf   = new JsReportPdfGenerator(jsreport);
         _excel = new SyncfusionExcelGenerator();
-        _ppt = new SyncfusionPptGenerator();
+        _ppt   = new SyncfusionPptGenerator();
     }
 
-    public string Name => "js-sync"; // Matches your Vue Dashboard route
+    public string Name => "js-sync";
 
     public Task<byte[]> GeneratePdfAsync(ReportDataViewModel data) =>
         _pdf.GenerateAsync(data, "<html><body><h1>{{SurveyTitle}}</h1></body></html>");
@@ -27,5 +27,5 @@ public class JsSyncHybridProvider : IReportProvider, ISupportHtmlTemplate
         _pdf.GenerateAsync(data, htmlTemplate);
 
     public Task<byte[]> GenerateExcelAsync(ReportDataViewModel data) => _excel.GenerateAsync(data);
-    public Task<byte[]> GeneratePptAsync(ReportDataViewModel data) => _ppt.GenerateAsync(data);
+    public Task<byte[]> GeneratePptAsync(ReportDataViewModel data)   => _ppt.GenerateAsync(data);
 }

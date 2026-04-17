@@ -1,4 +1,4 @@
-﻿using ReportApp.AnalysisEngine.Models;
+using ReportApp.AnalysisEngine.Models;
 
 namespace ReportApp.WebAPI.Providers.Generators;
 

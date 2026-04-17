@@ -1,4 +1,4 @@
-﻿using ReportApp.AnalysisEngine.Models;
+using ReportApp.AnalysisEngine.Models;
 using ReportApp.WebAPI.Interfaces;
 using ReportApp.WebAPI.Providers.Generators;
 
@@ -12,19 +12,14 @@ public class SyncfusionProvider : IReportProvider
 
     public SyncfusionProvider()
     {
-        _pdf = new SyncfusionPdfGenerator();
+        _pdf   = new SyncfusionPdfGenerator();
         _excel = new SyncfusionExcelGenerator();
-        _ppt = new SyncfusionPptGenerator();
+        _ppt   = new SyncfusionPptGenerator();
     }
 
     public string Name => "Syncfusion";
 
-    public async Task<byte[]> GeneratePdfAsync(ReportDataViewModel data)
-        => await _pdf.GenerateAsync(data);
-
-    public async Task<byte[]> GenerateExcelAsync(ReportDataViewModel data)
-        => await _excel.GenerateAsync(data);
-
-    public async Task<byte[]> GeneratePptAsync(ReportDataViewModel data)
-        => await _ppt.GenerateAsync(data);
+    public Task<byte[]> GeneratePdfAsync(ReportDataViewModel data)   => _pdf.GenerateAsync(data);
+    public Task<byte[]> GenerateExcelAsync(ReportDataViewModel data) => _excel.GenerateAsync(data);
+    public Task<byte[]> GeneratePptAsync(ReportDataViewModel data)   => _ppt.GenerateAsync(data);
 }

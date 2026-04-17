@@ -1,4 +1,4 @@
-﻿namespace ReportApp.AnalysisEngine.Models;
+namespace ReportApp.AnalysisEngine.Models;
 
 public class MonthlyTrend
 {
