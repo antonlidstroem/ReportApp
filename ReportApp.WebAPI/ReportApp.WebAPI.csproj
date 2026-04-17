@@ -1,8 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>dacef752-5dc4-4ff7-8c26-0aa2fc60fc29</UserSecretsId>
 	</PropertyGroup>
 
 	<!-- IronSuiteProvider.cs is a stub kept for documentation only -->
@@ -43,11 +44,7 @@
     Remove this target if you manage browser installs via CI/CD separately.
   -->
 	<Target Name="InstallPlaywrightBrowser" AfterTargets="Build">
-		<Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))"
-			  Command="powershell -ExecutionPolicy Bypass -File &quot;$(OutDir)playwright.ps1&quot; install chromium"
-			  ContinueOnError="true" />
-		<Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))"
-			  Command="bash &quot;$(OutDir)playwright.sh&quot; install chromium"
-			  ContinueOnError="true" />
+		<Exec Condition="$([MSBuild]::IsOSPlatform('Windows'))" Command="powershell -ExecutionPolicy Bypass -File &quot;$(OutDir)playwright.ps1&quot; install chromium" ContinueOnError="true" />
+		<Exec Condition="!$([MSBuild]::IsOSPlatform('Windows'))" Command="bash &quot;$(OutDir)playwright.sh&quot; install chromium" ContinueOnError="true" />
 	</Target>
 </Project>

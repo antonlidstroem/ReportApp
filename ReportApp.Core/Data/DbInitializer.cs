@@ -6,6 +6,9 @@ public static class DbInitializer
 {
     public static void Initialize(ReportDbContext context)
     {
+        // Under utveckling kan du lägga till denna rad för att rensa gamla data:
+        context.Database.EnsureDeleted();
+
         context.Database.EnsureCreated();
 
         if (context.Surveys.Any()) return;

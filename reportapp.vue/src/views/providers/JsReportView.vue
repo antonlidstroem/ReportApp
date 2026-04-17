@@ -26,7 +26,7 @@
         <div class="browser">
           <div class="browser-bar">
             <div class="dots"><span></span><span></span><span></span></div>
-            <span class="browser-url">{{SurveyTitle}} → report.pdf</span>
+            <span class="browser-url">{{ heroData?.title || 'Laddar...' }} → report.pdf</span>
           </div>
           <div class="browser-body" v-if="heroData">
             <div class="prev-title">{{ heroData.title }}</div>
@@ -216,14 +216,14 @@ function randomize() {
 
   function updateChart() {
     if (!liveChart) return
-
-    const ds = liveChart.data.datasets[0] as any
+    const ds = liveChart.data.datasets[0]
     if (!ds) return
 
-    ds.data = chartRows.value.map(r => r.value)
+      // Vi ändrar castingen här för att slippa typ-bråket
+      ; (ds as any).data = chartRows.value.map(r => r.value)
 
     if (activeCT.value === 'bar') {
-      ds.backgroundColor = chartRows.value.map(r => sc(r.value) + 'cc')
+      ; (ds as any).backgroundColor = chartRows.value.map(r => sc(r.value) + 'cc')
     }
 
     liveChart.update('none')
