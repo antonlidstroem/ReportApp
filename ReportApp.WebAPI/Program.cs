@@ -9,6 +9,7 @@ using ReportApp.WebAPI.Providers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── JSON / Controllers ────────────────────────────────────────────────────
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -22,9 +23,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "ReportApp PoC API", Version = "v1" }));
 
+// ── Database & Analysis ───────────────────────────────────────────────────
 builder.Services.AddDbContext<ReportDbContext>();
 builder.Services.AddScoped<AnalysisService>();
 
+// ── jsreport ──────────────────────────────────────────────────────────────
 var jsreportTempDir = Path.Combine(Path.GetTempPath(), "reportapp_jsreport");
 Directory.CreateDirectory(jsreportTempDir);
 
@@ -35,16 +38,28 @@ builder.Services.AddJsReport(new LocalReporting()
     .AsWebServer()
     .Create());
 
+// ── Syncfusion license ────────────────────────────────────────────────────
 var syncfusionKey = builder.Configuration["Syncfusion:LicenseKey"];
 if (!string.IsNullOrWhiteSpace(syncfusionKey))
     Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
 
-builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();
-builder.Services.AddScoped<IReportProvider, JsReportProvider>();
-builder.Services.AddScoped<IReportProvider, JsSyncHybridProvider>();
-builder.Services.AddSingleton<PlaywrightProvider>();
-builder.Services.AddScoped<IReportProvider, PlaySyncHybridProvider>();
+// ── Report Providers ──────────────────────────────────────────────────────
+builder.Services.AddScoped<IReportProvider, SyncfusionProvider>();   // "Syncfusion"
+builder.Services.AddScoped<IReportProvider, JsReportProvider>();      // "jsreport"
+builder.Services.AddScoped<IReportProvider, JsSyncHybridProvider>();  // "js-sync"
 
+// PlaywrightProvider holds a long-lived IBrowser — must be Singleton
+builder.Services.AddSingleton<PlaywrightProvider>();
+builder.Services.AddScoped<IReportProvider, PlaySyncHybridProvider>(); // "play-sync"
+
+// Telerik Document Processing (free — no license required for document processing)
+builder.Services.AddScoped<IReportProvider, TelerikProvider>();       // "Telerik"
+
+// DevExpress — stub until a Universal license is obtained
+// See DevExpressProvider.cs for setup instructions.
+builder.Services.AddScoped<IReportProvider, DevExpressProvider>();    // "DevExpress"
+
+// ── CORS ──────────────────────────────────────────────────────────────────
 var allowedOrigins = builder.Configuration
     .GetSection("AllowedOrigins")
     .Get<string[]>()
@@ -57,6 +72,7 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .WithExposedHeaders("X-Generation-Time-Ms", "X-File-Size-Bytes")));
 
+// ── Build ──────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -72,11 +88,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("VuePolicy");
-
-// Serve wwwroot/chart.umd.min.js so jsreport's headless Chrome can load it
-// at http://localhost:5207/chart.umd.min.js (no external CDN needed)
-app.UseStaticFiles();
-
 app.UseAuthorization();
 app.MapControllers();
 
