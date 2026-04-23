@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ReportApp.Core.Models;
 
 namespace ReportApp.Core.Data;

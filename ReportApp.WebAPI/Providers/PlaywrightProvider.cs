@@ -1,12 +1,11 @@
-﻿using Microsoft.Playwright;
-using System.Threading;
+using Microsoft.Playwright;
 
 namespace ReportApp.Backend.Providers;
 
 public class PlaywrightProvider : IAsyncDisposable
 {
     private IPlaywright? _playwright;
-    private IBrowser? _browser;
+    private IBrowser?    _browser;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     private async Task<IBrowser> GetBrowserAsync()
@@ -19,7 +18,7 @@ public class PlaywrightProvider : IAsyncDisposable
             if (_browser == null)
             {
                 _playwright = await Playwright.CreateAsync();
-                _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+                _browser    = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
                     Headless = true
                 });
@@ -36,7 +35,6 @@ public class PlaywrightProvider : IAsyncDisposable
     {
         var browser = await GetBrowserAsync();
 
-        // Vi skapar en ny kontext/sida för varje anrop, men behåller webbläsaren!
         await using var context = await browser.NewContextAsync();
         var page = await context.NewPageAsync();
 
@@ -47,9 +45,9 @@ public class PlaywrightProvider : IAsyncDisposable
 
         return await page.PdfAsync(new PagePdfOptions
         {
-            Format = "A4",
+            Format          = "A4",
             PrintBackground = true,
-            Margin = new Margin { Top = "1cm", Right = "1cm", Bottom = "1cm", Left = "1cm" }
+            Margin          = new Margin { Top = "1cm", Right = "1cm", Bottom = "1cm", Left = "1cm" }
         });
     }
 

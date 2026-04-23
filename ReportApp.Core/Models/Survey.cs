@@ -1,4 +1,4 @@
-﻿namespace ReportApp.Core.Models;
+namespace ReportApp.Core.Models;
 
 public class Survey
 {
